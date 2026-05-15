@@ -1,4 +1,4 @@
-// Skin type definitions
+// Skin tipleri
 export type Slot =
   | 'rifle_t'
   | 'rifle_ct'
@@ -22,7 +22,7 @@ export interface WearPrice {
 export interface Skin {
   id: string;
   name: string;
-  weapon: string;
+  weapon: string; // 'AK-47', 'M4A4', 'M4A1-S', 'Karambit', vs. — silah modelinin tam adı
   slot: Slot;
   rarity: string;
   image: string;
@@ -33,130 +33,194 @@ export interface Skin {
   entry_url: string;
 }
 
-// Slot importance for budget allocation
-export const SLOT_WEIGHTS: Record<Slot, number> = {
-  rifle_t: 0.16,
-  rifle_ct: 0.14,
-  sniper: 0.13,
-  pistol_t: 0.05,
-  pistol_ct: 0.05,
-  pistol_shared: 0.04,
-  smg: 0.04,
-  heavy: 0.03,
-  knife: 0.20,
-  glove: 0.16,
-};
+// ============================================================
+// SİLAH MODELLERİ (her biri ayrı seçilebilir)
+// ============================================================
 
+export interface WeaponDef {
+  name: string;        // 'AK-47', 'M4A4', 'Karambit', vs.
+  slot: Slot;          // hangi slotta (eski sistemde kategorize)
+  team: 'T' | 'CT' | 'shared'; // hangi takım kullanır
+  weight: number;      // bütçe dağılımındaki önemi
+  category: WeaponCategory; // UI gruplandırma için
+}
+
+export type WeaponCategory =
+  | 'rifle'      // AK, M4, Galil, FAMAS, AUG, SG553
+  | 'sniper'     // AWP, SSG, SCAR-20, G3SG1
+  | 'pistol'     // Glock, USP, Deagle, vs.
+  | 'smg'        // MP9, MAC-10, P90, vs.
+  | 'heavy'      // Nova, Mag-7, M249, vs.
+  | 'knife'      // Karambit, M9, Butterfly, vs.
+  | 'glove';     // Sport, Driver, Specialist, vs.
+
+// Tüm silah modelleri — her biri ayrı bir slot olarak davranır
+export const WEAPONS: WeaponDef[] = [
+  // Tüfekler — T
+  { name: 'AK-47',    slot: 'rifle_t',  team: 'T',  weight: 0.16, category: 'rifle' },
+  { name: 'Galil AR', slot: 'rifle_t',  team: 'T',  weight: 0.06, category: 'rifle' },
+  { name: 'SG 553',   slot: 'rifle_t',  team: 'T',  weight: 0.06, category: 'rifle' },
+  // Tüfekler — CT
+  { name: 'M4A4',     slot: 'rifle_ct', team: 'CT', weight: 0.14, category: 'rifle' },
+  { name: 'M4A1-S',   slot: 'rifle_ct', team: 'CT', weight: 0.14, category: 'rifle' },
+  { name: 'AUG',      slot: 'rifle_ct', team: 'CT', weight: 0.06, category: 'rifle' },
+  { name: 'FAMAS',    slot: 'rifle_ct', team: 'CT', weight: 0.05, category: 'rifle' },
+  // Sniper
+  { name: 'AWP',      slot: 'sniper',   team: 'shared', weight: 0.13, category: 'sniper' },
+  { name: 'SSG 08',   slot: 'sniper',   team: 'shared', weight: 0.05, category: 'sniper' },
+  { name: 'SCAR-20',  slot: 'sniper',   team: 'CT', weight: 0.04, category: 'sniper' },
+  { name: 'G3SG1',    slot: 'sniper',   team: 'T',  weight: 0.04, category: 'sniper' },
+  // Tabancalar — T
+  { name: 'Glock-18', slot: 'pistol_t', team: 'T',  weight: 0.05, category: 'pistol' },
+  { name: 'Tec-9',    slot: 'pistol_t', team: 'T',  weight: 0.04, category: 'pistol' },
+  // Tabancalar — CT
+  { name: 'USP-S',    slot: 'pistol_ct', team: 'CT', weight: 0.05, category: 'pistol' },
+  { name: 'P2000',    slot: 'pistol_ct', team: 'CT', weight: 0.04, category: 'pistol' },
+  { name: 'Five-SeveN', slot: 'pistol_ct', team: 'CT', weight: 0.04, category: 'pistol' },
+  // Tabancalar — shared
+  { name: 'Desert Eagle',  slot: 'pistol_shared', team: 'shared', weight: 0.06, category: 'pistol' },
+  { name: 'P250',          slot: 'pistol_shared', team: 'shared', weight: 0.03, category: 'pistol' },
+  { name: 'CZ75-Auto',     slot: 'pistol_shared', team: 'shared', weight: 0.03, category: 'pistol' },
+  { name: 'Dual Berettas', slot: 'pistol_shared', team: 'shared', weight: 0.03, category: 'pistol' },
+  { name: 'R8 Revolver',   slot: 'pistol_shared', team: 'shared', weight: 0.03, category: 'pistol' },
+  // SMG
+  { name: 'MP9',      slot: 'smg', team: 'CT', weight: 0.04, category: 'smg' },
+  { name: 'MAC-10',   slot: 'smg', team: 'T',  weight: 0.04, category: 'smg' },
+  { name: 'MP7',      slot: 'smg', team: 'shared', weight: 0.04, category: 'smg' },
+  { name: 'MP5-SD',   slot: 'smg', team: 'shared', weight: 0.04, category: 'smg' },
+  { name: 'UMP-45',   slot: 'smg', team: 'shared', weight: 0.04, category: 'smg' },
+  { name: 'P90',      slot: 'smg', team: 'shared', weight: 0.04, category: 'smg' },
+  { name: 'PP-Bizon', slot: 'smg', team: 'shared', weight: 0.03, category: 'smg' },
+  // Heavy
+  { name: 'Nova',      slot: 'heavy', team: 'shared', weight: 0.03, category: 'heavy' },
+  { name: 'XM1014',    slot: 'heavy', team: 'shared', weight: 0.03, category: 'heavy' },
+  { name: 'MAG-7',     slot: 'heavy', team: 'CT', weight: 0.03, category: 'heavy' },
+  { name: 'Sawed-Off', slot: 'heavy', team: 'T',  weight: 0.03, category: 'heavy' },
+  { name: 'M249',      slot: 'heavy', team: 'shared', weight: 0.02, category: 'heavy' },
+  { name: 'Negev',     slot: 'heavy', team: 'shared', weight: 0.02, category: 'heavy' },
+  // Bıçaklar — her biri ayrı model
+  { name: 'Karambit',         slot: 'knife', team: 'shared', weight: 0.20, category: 'knife' },
+  { name: 'Butterfly Knife',  slot: 'knife', team: 'shared', weight: 0.20, category: 'knife' },
+  { name: 'M9 Bayonet',       slot: 'knife', team: 'shared', weight: 0.20, category: 'knife' },
+  { name: 'Bayonet',          slot: 'knife', team: 'shared', weight: 0.18, category: 'knife' },
+  { name: 'Talon Knife',      slot: 'knife', team: 'shared', weight: 0.20, category: 'knife' },
+  { name: 'Skeleton Knife',   slot: 'knife', team: 'shared', weight: 0.20, category: 'knife' },
+  { name: 'Stiletto Knife',   slot: 'knife', team: 'shared', weight: 0.20, category: 'knife' },
+  { name: 'Flip Knife',       slot: 'knife', team: 'shared', weight: 0.18, category: 'knife' },
+  { name: 'Huntsman Knife',   slot: 'knife', team: 'shared', weight: 0.18, category: 'knife' },
+  { name: 'Bowie Knife',      slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  { name: 'Gut Knife',        slot: 'knife', team: 'shared', weight: 0.12, category: 'knife' },
+  { name: 'Falchion Knife',   slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  { name: 'Shadow Daggers',   slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  { name: 'Navaja Knife',     slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  { name: 'Ursus Knife',      slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  { name: 'Survival Knife',   slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  { name: 'Paracord Knife',   slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  { name: 'Nomad Knife',      slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  { name: 'Classic Knife',    slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  { name: 'Kukri Knife',      slot: 'knife', team: 'shared', weight: 0.15, category: 'knife' },
+  // Eldivenler — her biri ayrı model
+  { name: 'Sport Gloves',       slot: 'glove', team: 'shared', weight: 0.16, category: 'glove' },
+  { name: 'Driver Gloves',      slot: 'glove', team: 'shared', weight: 0.15, category: 'glove' },
+  { name: 'Specialist Gloves',  slot: 'glove', team: 'shared', weight: 0.15, category: 'glove' },
+  { name: 'Hand Wraps',         slot: 'glove', team: 'shared', weight: 0.13, category: 'glove' },
+  { name: 'Moto Gloves',        slot: 'glove', team: 'shared', weight: 0.13, category: 'glove' },
+  { name: 'Bloodhound Gloves',  slot: 'glove', team: 'shared', weight: 0.12, category: 'glove' },
+  { name: 'Broken Fang Gloves', slot: 'glove', team: 'shared', weight: 0.12, category: 'glove' },
+  { name: 'Hydra Gloves',       slot: 'glove', team: 'shared', weight: 0.11, category: 'glove' },
+];
+
+export const WEAPON_CATEGORIES: { id: WeaponCategory; label: string }[] = [
+  { id: 'rifle', label: 'Tüfekler' },
+  { id: 'sniper', label: 'Sniper' },
+  { id: 'pistol', label: 'Tabancalar' },
+  { id: 'smg', label: 'SMG' },
+  { id: 'heavy', label: 'Heavy' },
+  { id: 'knife', label: 'Bıçaklar' },
+  { id: 'glove', label: 'Eldivenler' },
+];
+
+// Pratik bir lookup: weapon name -> def
+export const WEAPON_BY_NAME: Record<string, WeaponDef> = Object.fromEntries(
+  WEAPONS.map((w) => [w.name, w])
+);
+
+// Hazır preset'ler
+export const LOADOUT_PRESETS: { id: string; label: string; weapons: string[] }[] = [
+  {
+    id: 'classic',
+    label: 'Klasik',
+    weapons: ['AK-47', 'M4A4', 'AWP', 'Desert Eagle', 'Karambit', 'Sport Gloves'],
+  },
+  {
+    id: 'competitive',
+    label: 'Rekabetçi (Pro)',
+    weapons: ['AK-47', 'M4A1-S', 'AWP', 'Desert Eagle', 'Glock-18', 'USP-S', 'Karambit', 'Sport Gloves'],
+  },
+  {
+    id: 'rifles_only',
+    label: 'Sadece Tüfekler',
+    weapons: ['AK-47', 'M4A4', 'M4A1-S', 'AWP'],
+  },
+  {
+    id: 'pistols_only',
+    label: 'Sadece Tabancalar',
+    weapons: ['Glock-18', 'USP-S', 'Desert Eagle'],
+  },
+  {
+    id: 'show_pieces',
+    label: 'Bıçak + Eldiven',
+    weapons: ['Karambit', 'Sport Gloves'],
+  },
+];
+
+// Eski slot etiketleri (UI'da hala gerekli olabilir)
 export const SLOT_LABELS: Record<Slot, string> = {
-  rifle_t: 'AK-47 / T Rifle',
-  rifle_ct: 'M4 / CT Rifle',
-  sniper: 'AWP / Sniper',
-  pistol_t: 'Glock / T Pistol',
-  pistol_ct: 'USP / CT Pistol',
-  pistol_shared: 'Deagle / Shared',
+  rifle_t: 'T Rifle',
+  rifle_ct: 'CT Rifle',
+  sniper: 'Sniper',
+  pistol_t: 'T Pistol',
+  pistol_ct: 'CT Pistol',
+  pistol_shared: 'Shared Pistol',
   smg: 'SMG',
   heavy: 'Heavy',
   knife: 'Knife',
   glove: 'Gloves',
 };
 
-export const ALL_SLOTS: Slot[] = [
-  'rifle_t',
-  'rifle_ct',
-  'sniper',
-  'pistol_t',
-  'pistol_ct',
-  'pistol_shared',
-  'smg',
-  'heavy',
-  'knife',
-  'glove',
-];
+// ============================================================
+// MANUEL & GÖRSEL ETİKETLER
+// ============================================================
 
-// Slot kategorileri (UI'da gruplama için)
-export const SLOT_GROUPS: { label: string; slots: Slot[] }[] = [
-  { label: 'Tüfekler', slots: ['rifle_t', 'rifle_ct'] },
-  { label: 'Sniper', slots: ['sniper'] },
-  { label: 'Tabancalar', slots: ['pistol_t', 'pistol_ct', 'pistol_shared'] },
-  { label: 'Diğer', slots: ['smg', 'heavy'] },
-  { label: 'Ekstra', slots: ['knife', 'glove'] },
-];
-
-// Hazır preset'ler — kullanıcı hızlıca seçebilsin
-export const LOADOUT_PRESETS: { id: string; label: string; slots: Slot[] }[] = [
-  {
-    id: 'classic',
-    label: 'Klasik',
-    slots: ['rifle_t', 'rifle_ct', 'sniper', 'pistol_shared', 'knife', 'glove'],
-  },
-  {
-    id: 'full',
-    label: 'Hepsi',
-    slots: [...ALL_SLOTS],
-  },
-  {
-    id: 'rifles_only',
-    label: 'Sadece tüfekler',
-    slots: ['rifle_t', 'rifle_ct', 'sniper'],
-  },
-  {
-    id: 'pistols_only',
-    label: 'Sadece tabancalar',
-    slots: ['pistol_t', 'pistol_ct', 'pistol_shared'],
-  },
-  {
-    id: 'show_pieces',
-    label: 'Show-piece (bıçak + eldiven)',
-    slots: ['knife', 'glove'],
-  },
-];
-
-// Manuel etiketleri import et — bunlar otomatik etiketleri ezer (override eder)
 import { MANUAL_TAGS } from './manual_tags';
 
-// Görsel analizinden gelen renk etiketleri (Python script üretiyor).
-// Varsa otomatik yüklenir; yoksa boş obje ile devam eder (geri uyumlu).
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 let VISUAL_COLOR_TAGS: Record<string, string[]> = {};
 try {
-  // require ile dene; dosya yoksa hata fırlatır ve catch'e düşer
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   VISUAL_COLOR_TAGS = require('../public/data/skin_colors.json');
 } catch {
   VISUAL_COLOR_TAGS = {};
 }
 
-/**
- * Bir skin için kullanılacak gerçek tag listesi.
- * Öncelik:
- *  1. Görsel analizi (Python script üretti, en doğru)
- *  2. Manuel etiket (elle yazıldı, güvenilir)
- *  3. Otomatik isim etiketi (fallback)
- *
- * Stil etiketleri (cyberpunk, vintage, military, premium, neon, doppler-family)
- * her zaman tüm kaynaklardan birleştirilir.
- */
 export function getEffectiveTags(skin: Skin): string[] {
   const visual = VISUAL_COLOR_TAGS[skin.name];
   const manual = MANUAL_TAGS[skin.name];
   const auto = skin.tags;
 
-  // Renk etiketleri için öncelikli kaynak: görsel > manuel > otomatik
   const colorTags = ['red', 'blue', 'green', 'purple', 'gold', 'black', 'white', 'orange', 'pink'];
-  
+
   let chosenColors: string[] = [];
   if (visual && visual.length > 0) {
-    chosenColors = visual.filter(t => colorTags.includes(t));
+    chosenColors = visual.filter((t) => colorTags.includes(t));
   } else if (manual) {
-    chosenColors = manual.filter(t => colorTags.includes(t));
+    chosenColors = manual.filter((t) => colorTags.includes(t));
   } else {
-    chosenColors = auto.filter(t => colorTags.includes(t));
+    chosenColors = auto.filter((t) => colorTags.includes(t));
   }
 
-  // Stil etiketleri: tüm kaynaklardan birleştir (cyberpunk, vintage, neon, vb.)
   const styleTags = new Set<string>();
-  [visual, manual, auto].forEach(src => {
-    if (src) src.forEach(t => {
+  [visual, manual, auto].forEach((src) => {
+    if (src) src.forEach((t) => {
       if (!colorTags.includes(t)) styleTags.add(t);
     });
   });
@@ -164,131 +228,124 @@ export function getEffectiveTags(skin: Skin): string[] {
   return [...chosenColors, ...Array.from(styleTags)];
 }
 
+// ============================================================
+// ÖNERİ ALGORİTMASI (artık weapon bazlı)
+// ============================================================
+
 export interface RecommendOptions {
   budget: number;
-  themeTag?: string; // e.g. 'red', 'cyberpunk'
-  enabledSlots: Slot[]; // explicit list of slots to include
-  variationSeed?: number; // for "regenerate" button to produce different picks
+  themeTag?: string;
+  enabledWeapons: string[]; // ['AK-47', 'M4A4', 'AWP', ...]
+  variationSeed?: number;
 }
 
 export interface Loadout {
-  items: Partial<Record<Slot, Skin>>;
+  items: Record<string, Skin>; // weapon name -> skin
   totalPrice: number;
   budget: number;
   themeTag?: string;
 }
 
-/**
- * Bütçe bazlı loadout öneri algoritması.
- *
- * Mantık:
- * 1. Aktif slotları belirle (knife/glove dahil mi)
- * 2. Ağırlıkları yeniden normalize et
- * 3. Her slot için bütçe payını hesapla
- * 4. Her slotta, o pay ±%50 aralığında uygun skin bul (tema varsa filtrele)
- * 5. Artan bütçe varsa, eksik kalan slotları üst-sınırla yükselt
- * 6. Eksik bütçe varsa, en düşük popülerlikteki slotları küçült
- */
 export function recommendLoadout(
   allSkins: Skin[],
   options: RecommendOptions
 ): Loadout {
-  const { budget, themeTag, enabledSlots, variationSeed = 0 } = options;
+  const { budget, themeTag, enabledWeapons, variationSeed = 0 } = options;
 
-  // Deterministic pseudo-random based on seed for "regenerate" reproducibility within a session
+  // Deterministik random (variation seed)
   let rngState = variationSeed * 2654435761;
   const rand = () => {
     rngState = (rngState * 1664525 + 1013904223) | 0;
     return ((rngState >>> 0) % 10000) / 10000;
   };
 
-  // Active slots
-  // Use only the slots that the user enabled
-  const activeSlots = ALL_SLOTS.filter((s) => enabledSlots.includes(s));
+  // Aktif silahlar (geçerli olanlar)
+  const activeWeapons = enabledWeapons.filter((w) => w in WEAPON_BY_NAME);
+  if (activeWeapons.length === 0) {
+    return { items: {}, totalPrice: 0, budget, themeTag };
+  }
 
-  // Normalize weights
-  const totalWeight = activeSlots.reduce((sum, s) => sum + SLOT_WEIGHTS[s], 0);
-  const slotBudgets = Object.fromEntries(
-    activeSlots.map((s) => [s, (budget * SLOT_WEIGHTS[s]) / totalWeight])
-  ) as Record<Slot, number>;
+  // Ağırlıkları normalize et — toplam = 1
+  const totalWeight = activeWeapons.reduce(
+    (sum, w) => sum + WEAPON_BY_NAME[w].weight,
+    0
+  );
+  const weaponBudgets: Record<string, number> = {};
+  for (const w of activeWeapons) {
+    weaponBudgets[w] = (budget * WEAPON_BY_NAME[w].weight) / totalWeight;
+  }
 
-  const items: Partial<Record<Slot, Skin>> = {};
+  const items: Record<string, Skin> = {};
   let totalSpent = 0;
 
-  // Slot için aday havuzunu hazırla (tema fallback dahil)
-  function candidatesFor(slot: Slot, applyTheme: boolean): Skin[] {
+  // Önem sırasına göre işle (önemli silahlar önce, kalan bütçe önemsizler için)
+  const weaponsByImportance = [...activeWeapons].sort(
+    (a, b) => WEAPON_BY_NAME[b].weight - WEAPON_BY_NAME[a].weight
+  );
+
+  const candidatesFor = (weaponName: string, applyTheme: boolean): Skin[] => {
     return allSkins.filter((s) => {
-      if (s.slot !== slot) return false;
+      if (s.weapon !== weaponName) return false;
       if (applyTheme && themeTag && !getEffectiveTags(s).includes(themeTag)) return false;
       return true;
     });
-  }
+  };
 
-  // First pass: target budget per slot, STRICT (target üstünde gitme)
-  // Önemli slotları önce işle ki kalan bütçe önemsizler için kalsın
-  const slotsByImportance = [...activeSlots].sort(
-    (a, b) => SLOT_WEIGHTS[b] - SLOT_WEIGHTS[a]
-  );
-
-  for (const slot of slotsByImportance) {
-    const target = slotBudgets[slot];
-    // Kalan bütçeyi de hesaba kat — slot target'ı aşamaz ama kalan bütçenin de %80'inden fazlasını yiyemez
+  for (const weaponName of weaponsByImportance) {
+    const target = weaponBudgets[weaponName];
     const remainingBudget = budget - totalSpent;
-    const slotsRemaining = slotsByImportance.filter(
-      (s) => !(s in items) && s !== slot
+    const weaponsRemaining = weaponsByImportance.filter(
+      (w) => !(w in items) && w !== weaponName
     ).length;
-    // En çok bu kadar harcayabilir: target ile remainingBudget'ın diğer slotlara minimum 1€ bırakacak değeri arasında
     const maxAllowed = Math.min(
-      target * 1.3,
-      Math.max(0.5, remainingBudget - slotsRemaining * 0.5)
+      target * 1.5,
+      Math.max(0.5, remainingBudget - weaponsRemaining * 0.5)
     );
 
-    // Önce tema ile dene, bulunamazsa tema olmadan dene
+    let pick: Skin | undefined;
+
+    // Önce tema ile dene, bulunamazsa tema olmadan
     for (const useTheme of [true, false]) {
-      const candidates = candidatesFor(slot, useTheme).filter(
+      const candidates = candidatesFor(weaponName, useTheme).filter(
         (c) => c.entry_price <= maxAllowed
       );
       if (candidates.length === 0) continue;
 
-      // Target'a en yakın ama altında olanları tercih et
-      // Hedef: target'ın %70-100'ü arasındaki en popüler skin
+      // Sweet spot: target'ın %50-100'ü arasındaki en popüler skin
       const sweetSpot = candidates.filter(
         (c) => c.entry_price >= target * 0.5 && c.entry_price <= target
       );
 
-      let pick: Skin;
       if (sweetSpot.length > 0) {
-        // Popülerliğe göre sırala, top 3'ten rastgele birini seç (variasyon için)
         const topPicks = [...sweetSpot]
           .sort((a, b) => sumQuantity(b) - sumQuantity(a))
           .slice(0, Math.max(3, Math.ceil(sweetSpot.length * 0.3)));
         pick = topPicks[Math.floor(rand() * topPicks.length)];
       } else {
-        // Sweet spot yoksa, max allowed altında olan en pahalı (kaliteli) skin
-        // Top 2'den rastgele
-        const sorted = candidates.sort((a, b) => b.entry_price - a.entry_price).slice(0, 2);
-        pick = sorted[Math.floor(rand() * sorted.length)];
+        // Sweet spot yoksa: max altında olan en pahalı (kaliteli)
+        const sorted = candidates.sort((a, b) => b.entry_price - a.entry_price);
+        pick = sorted[Math.floor(rand() * Math.min(2, sorted.length))];
       }
-
-      items[slot] = pick;
-      totalSpent += pick.entry_price;
       break;
+    }
+
+    if (pick) {
+      items[weaponName] = pick;
+      totalSpent += pick.entry_price;
     }
   }
 
-  // Second pass: kalan bütçeyle slot upgrade
+  // Upgrade pass: kalan bütçeyi en önemli silahlara harca
   let headroom = budget - totalSpent;
   if (headroom > budget * 0.05) {
-    // En değerli slotlardan başlayarak yükselt
-    for (const slot of slotsByImportance) {
+    for (const weaponName of weaponsByImportance) {
       if (headroom <= budget * 0.02) break;
-      const current = items[slot];
+      const current = items[weaponName];
       if (!current) continue;
-
       const upgradeBudget = current.entry_price + headroom;
-      // Önce tema, sonra tema olmadan dene
+
       for (const useTheme of [true, false]) {
-        const better = candidatesFor(slot, useTheme)
+        const better = candidatesFor(weaponName, useTheme)
           .filter(
             (s) =>
               s.entry_price > current.entry_price &&
@@ -298,7 +355,7 @@ export function recommendLoadout(
 
         if (better) {
           const cost = better.entry_price - current.entry_price;
-          items[slot] = better;
+          items[weaponName] = better;
           totalSpent += cost;
           headroom -= cost;
           break;
@@ -307,22 +364,17 @@ export function recommendLoadout(
     }
   }
 
-  return {
-    items,
-    totalPrice: totalSpent,
-    budget,
-    themeTag,
-  };
+  return { items, totalPrice: totalSpent, budget, themeTag };
 }
 
 function sumQuantity(s: Skin): number {
   return s.wears.reduce((sum, w) => sum + w.quantity, 0);
 }
 
-/**
- * Bir slot için seçili skin'e alternatif olabilecek skinleri bulur.
- * Aynı bütçe bandında (±50%) farklı opsiyonlar gösterir.
- */
+// ============================================================
+// ALTERNATİFLER
+// ============================================================
+
 export function findAlternatives(
   allSkins: Skin[],
   currentSkin: Skin,
@@ -338,21 +390,19 @@ export function findAlternatives(
   const lower = targetPrice * (1 - priceTolerancePct);
   const upper = targetPrice * (1 + priceTolerancePct);
 
-  // Adayları filtrele: aynı slot, farklı skin, makul fiyat aralığı
-  let candidates = allSkins.filter((s) => {
-    if (s.slot !== currentSkin.slot) return false;
+  // Alternatifler: AYNI WEAPON modelinden, farklı skin
+  const candidates = allSkins.filter((s) => {
+    if (s.weapon !== currentSkin.weapon) return false;
     if (s.id === currentSkin.id) return false;
-    if (s.entry_price < lower * 0.3) return false; // çok ucuz olanlar hariç
-    if (s.entry_price > upper * 2) return false; // çok pahalı olanlar hariç
+    if (s.entry_price < lower * 0.3) return false;
+    if (s.entry_price > upper * 2) return false;
     if (themeTag && !getEffectiveTags(s).includes(themeTag)) return false;
     return true;
   });
 
-  // Hedef fiyata yakınlığa + popülerliğe göre skorla
   const scored = candidates.map((s) => {
     const priceDiff = Math.abs(s.entry_price - targetPrice) / targetPrice;
     const popularity = sumQuantity(s);
-    // Daha yakın fiyat + daha popüler = daha yüksek skor
     const score = -priceDiff * 2 + Math.log10(popularity + 1) * 0.5;
     return { skin: s, score };
   });
@@ -361,13 +411,11 @@ export function findAlternatives(
   return scored.slice(0, maxResults).map((x) => x.skin);
 }
 
-/**
- * Skinport affiliate URL wrapper.
- * Production'da gerçek affiliate ID'si ile r= param eklenir.
- */
+// ============================================================
+// AFFILIATE & TEMA TAGLERİ
+// ============================================================
+
 export function affiliateUrl(originalUrl: string, source: string = 'loadoutlab'): string {
-  // Skinport şu an public bir affiliate program açmıyor, promo kod modeli var.
-  // Placeholder olarak utm parametreleri ekliyoruz.
   try {
     const u = new URL(originalUrl);
     u.searchParams.set('utm_source', source);
@@ -378,9 +426,6 @@ export function affiliateUrl(originalUrl: string, source: string = 'loadoutlab')
   }
 }
 
-// Tema filtreleri — renkler ve stiller birlikte.
-// Renkler: Python görsel analizi sonrası güvenilir.
-// Stiller: isim/rarity'den çıkarılır.
 export const THEME_TAGS = [
   { id: 'red', label: 'Kırmızı', kind: 'color' as const },
   { id: 'blue', label: 'Mavi', kind: 'color' as const },

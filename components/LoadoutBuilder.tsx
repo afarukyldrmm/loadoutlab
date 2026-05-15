@@ -3,12 +3,11 @@
 import { useState, useMemo } from 'react';
 import {
   Skin,
-  Slot,
-  SLOT_LABELS,
   THEME_TAGS,
   RARITY_COLORS,
-  ALL_SLOTS,
-  SLOT_GROUPS,
+  WEAPONS,
+  WEAPON_BY_NAME,
+  WEAPON_CATEGORIES,
   LOADOUT_PRESETS,
   recommendLoadout,
   affiliateUrl,
@@ -27,33 +26,35 @@ const BUDGET_PRESETS = [
   { label: '5.000€', value: 5000 },
 ];
 
-// "Klasik" preset varsayılan başlangıç
-const DEFAULT_SLOTS: Slot[] = LOADOUT_PRESETS.find((p) => p.id === 'classic')!.slots;
+const DEFAULT_WEAPONS = LOADOUT_PRESETS.find((p) => p.id === 'classic')!.weapons;
 
 export default function LoadoutBuilder({ allSkins }: Props) {
   const [budget, setBudget] = useState(500);
   const [themeTag, setThemeTag] = useState<string | undefined>(undefined);
-  const [enabledSlots, setEnabledSlots] = useState<Set<Slot>>(new Set(DEFAULT_SLOTS));
+  const [enabledWeapons, setEnabledWeapons] = useState<Set<string>>(
+    new Set(DEFAULT_WEAPONS)
+  );
   const [regenKey, setRegenKey] = useState(0);
-  const [overrides, setOverrides] = useState<Partial<Record<Slot, Skin>>>({});
+  const [overrides, setOverrides] = useState<Record<string, Skin>>({});
+  const [weaponPanelOpen, setWeaponPanelOpen] = useState(false);
 
   const loadout = useMemo(() => {
     return recommendLoadout(allSkins, {
       budget,
       themeTag,
-      enabledSlots: Array.from(enabledSlots),
+      enabledWeapons: Array.from(enabledWeapons),
       variationSeed: regenKey,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget, themeTag, enabledSlots, regenKey, allSkins]);
+  }, [budget, themeTag, enabledWeapons, regenKey, allSkins]);
 
   const finalItems = useMemo(() => {
-    const merged = { ...loadout.items };
-    for (const [slot, skin] of Object.entries(overrides)) {
-      if (skin) merged[slot as Slot] = skin;
+    const merged: Record<string, Skin> = { ...loadout.items };
+    for (const [weaponName, skin] of Object.entries(overrides)) {
+      if (skin && enabledWeapons.has(weaponName)) merged[weaponName] = skin;
     }
     return merged;
-  }, [loadout, overrides]);
+  }, [loadout, overrides, enabledWeapons]);
 
   const totalPrice = useMemo(() => {
     return Object.values(finalItems).reduce(
@@ -62,7 +63,13 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     );
   }, [finalItems]);
 
-  const activeSlotList = ALL_SLOTS.filter((s) => enabledSlots.has(s));
+  // Aktif silahları sırala — bütçe ağırlığına göre
+  const activeWeaponList = useMemo(() => {
+    return Array.from(enabledWeapons).sort(
+      (a, b) => (WEAPON_BY_NAME[b]?.weight ?? 0) - (WEAPON_BY_NAME[a]?.weight ?? 0)
+    );
+  }, [enabledWeapons]);
+
   const remainder = budget - totalPrice;
 
   function changeBudget(newBudget: number) {
@@ -80,23 +87,23 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     setOverrides({});
   }
 
-  function toggleSlot(slot: Slot) {
-    setEnabledSlots((prev) => {
+  function toggleWeapon(weaponName: string) {
+    setEnabledWeapons((prev) => {
       const next = new Set(prev);
-      if (next.has(slot)) next.delete(slot);
-      else next.add(slot);
+      if (next.has(weaponName)) next.delete(weaponName);
+      else next.add(weaponName);
       return next;
     });
     setOverrides({});
   }
 
-  function applyPreset(slots: Slot[]) {
-    setEnabledSlots(new Set(slots));
+  function applyPreset(weapons: string[]) {
+    setEnabledWeapons(new Set(weapons));
     setOverrides({});
   }
 
-  function swapSlotSkin(slot: Slot, newSkin: Skin) {
-    setOverrides((o) => ({ ...o, [slot]: newSkin }));
+  function swapSkin(weaponName: string, newSkin: Skin) {
+    setOverrides((o) => ({ ...o, [weaponName]: newSkin }));
   }
 
   return (
@@ -104,6 +111,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
       <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Tercihlerini Ayarla</h2>
 
+        {/* Bütçe */}
         <div className="mb-6">
           <div className="flex items-baseline justify-between mb-2">
             <label className="text-sm text-gray-400">Toplam Bütçe</label>
@@ -137,26 +145,24 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           </div>
         </div>
 
-        {/* SLOT (silah) seçimi */}
+        {/* SİLAH SEÇİMİ */}
         <div className="mb-6">
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm text-gray-400">
-              Dahil edilecek silahlar
-            </label>
+            <label className="text-sm text-gray-400">Silahlar</label>
             <span className="text-xs text-gray-600">
-              {enabledSlots.size} slot seçili
+              {enabledWeapons.size} silah seçili
             </span>
           </div>
 
-          <div className="flex gap-2 flex-wrap mb-4">
+          <div className="flex gap-2 flex-wrap mb-3">
             {LOADOUT_PRESETS.map((p) => {
               const isMatch =
-                p.slots.length === enabledSlots.size &&
-                p.slots.every((s) => enabledSlots.has(s));
+                p.weapons.length === enabledWeapons.size &&
+                p.weapons.every((w) => enabledWeapons.has(w));
               return (
                 <button
                   key={p.id}
-                  onClick={() => applyPreset(p.slots)}
+                  onClick={() => applyPreset(p.weapons)}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                     isMatch
                       ? 'bg-orange-500 text-white'
@@ -169,38 +175,94 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             })}
           </div>
 
-          <div className="bg-[var(--bg-tertiary)] rounded-md p-4 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2">
-            {SLOT_GROUPS.map((group) => (
-              <div key={group.label}>
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
-                  {group.label}
-                </div>
-                {group.slots.map((slot) => (
-                  <label
-                    key={slot}
-                    className="flex items-center gap-2 py-1.5 cursor-pointer group"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={enabledSlots.has(slot)}
-                      onChange={() => toggleSlot(slot)}
-                      className="w-4 h-4 accent-orange-500"
-                    />
-                    <span
-                      className={`text-xs ${
-                        enabledSlots.has(slot) ? 'text-gray-200' : 'text-gray-500'
-                      } group-hover:text-white transition-colors`}
-                    >
-                      {SLOT_LABELS[slot]}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            ))}
-          </div>
+          <button
+            onClick={() => setWeaponPanelOpen((v) => !v)}
+            className="text-xs text-gray-400 hover:text-orange-400 transition-colors flex items-center gap-1 mb-3"
+          >
+            {weaponPanelOpen ? '▾' : '▸'} Silah listesini {weaponPanelOpen ? 'gizle' : 'göster'} (detaylı seçim)
+          </button>
+
+          {weaponPanelOpen && (
+            <div className="bg-[var(--bg-tertiary)] rounded-md p-4 space-y-4">
+              {WEAPON_CATEGORIES.map((cat) => {
+                const catWeapons = WEAPONS.filter((w) => w.category === cat.id);
+                const selectedInCat = catWeapons.filter((w) => enabledWeapons.has(w.name)).length;
+                return (
+                  <div key={cat.id}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+                        {cat.label}{' '}
+                        <span className="text-gray-600">
+                          ({selectedInCat}/{catWeapons.length})
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            setEnabledWeapons((prev) => {
+                              const next = new Set(prev);
+                              catWeapons.forEach((w) => next.add(w.name));
+                              return next;
+                            });
+                            setOverrides({});
+                          }}
+                          className="text-[10px] text-gray-500 hover:text-orange-400 transition-colors"
+                        >
+                          Hepsi
+                        </button>
+                        <span className="text-[10px] text-gray-700">·</span>
+                        <button
+                          onClick={() => {
+                            setEnabledWeapons((prev) => {
+                              const next = new Set(prev);
+                              catWeapons.forEach((w) => next.delete(w.name));
+                              return next;
+                            });
+                            setOverrides({});
+                          }}
+                          className="text-[10px] text-gray-500 hover:text-orange-400 transition-colors"
+                        >
+                          Hiçbiri
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 gap-y-1">
+                      {catWeapons.map((w) => (
+                        <label
+                          key={w.name}
+                          className="flex items-center gap-2 py-1 cursor-pointer group"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={enabledWeapons.has(w.name)}
+                            onChange={() => toggleWeapon(w.name)}
+                            className="w-3.5 h-3.5 accent-orange-500 flex-shrink-0"
+                          />
+                          <span
+                            className={`text-xs ${
+                              enabledWeapons.has(w.name)
+                                ? 'text-gray-200'
+                                : 'text-gray-500'
+                            } group-hover:text-white transition-colors truncate`}
+                          >
+                            {w.name}
+                            {w.team !== 'shared' && (
+                              <span className="text-gray-600 ml-1">
+                                ({w.team})
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Renk ve stil filtreleri */}
+        {/* Renk + stil filtreleri */}
         <div className="mb-6">
           <label className="text-sm text-gray-400 mb-2 block">Renk (opsiyonel)</label>
           <div className="flex gap-2 flex-wrap mb-3">
@@ -283,23 +345,23 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         </div>
       </div>
 
-      {activeSlotList.length === 0 ? (
+      {activeWeaponList.length === 0 ? (
         <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-8 text-center text-gray-400">
-          En az bir silah seç. Yukarıdan slot seçimi yapabilirsin.
+          En az bir silah seç. Yukarıdan silah listesini açıp seçim yapabilirsin.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-in">
-          {activeSlotList.map((slot) => {
-            const skin = finalItems[slot];
+          {activeWeaponList.map((weaponName) => {
+            const skin = finalItems[weaponName];
             return (
-              <SlotCard
-                key={slot}
-                slot={slot}
+              <WeaponCard
+                key={weaponName}
+                weaponName={weaponName}
                 skin={skin}
                 allSkins={allSkins}
                 themeTag={themeTag}
-                onSwap={(newSkin) => swapSlotSkin(slot, newSkin)}
-                isOverridden={!!overrides[slot]}
+                onSwap={(newSkin) => swapSkin(weaponName, newSkin)}
+                isOverridden={!!overrides[weaponName]}
               />
             );
           })}
@@ -309,8 +371,8 @@ export default function LoadoutBuilder({ allSkins }: Props) {
   );
 }
 
-interface SlotCardProps {
-  slot: Slot;
+interface WeaponCardProps {
+  weaponName: string;
   skin?: Skin;
   allSkins: Skin[];
   themeTag?: string;
@@ -318,7 +380,14 @@ interface SlotCardProps {
   isOverridden: boolean;
 }
 
-function SlotCard({ slot, skin, allSkins, themeTag, onSwap, isOverridden }: SlotCardProps) {
+function WeaponCard({
+  weaponName,
+  skin,
+  allSkins,
+  themeTag,
+  onSwap,
+  isOverridden,
+}: WeaponCardProps) {
   const [showAlts, setShowAlts] = useState(false);
 
   const alternatives = useMemo(() => {
@@ -329,9 +398,7 @@ function SlotCard({ slot, skin, allSkins, themeTag, onSwap, isOverridden }: Slot
   if (!skin) {
     return (
       <div className="bg-[var(--bg-secondary)] border border-dashed border-gray-700 rounded-xl p-4 flex flex-col items-center justify-center text-gray-500 min-h-[260px]">
-        <div className="text-xs uppercase tracking-wider mb-1">
-          {SLOT_LABELS[slot]}
-        </div>
+        <div className="text-xs uppercase tracking-wider mb-1">{weaponName}</div>
         <div className="text-sm">Uygun skin yok</div>
       </div>
     );
@@ -343,7 +410,7 @@ function SlotCard({ slot, skin, allSkins, themeTag, onSwap, isOverridden }: Slot
     <div className="skin-card bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-4 hover:border-orange-500/50 flex flex-col">
       <div className="flex items-center justify-between mb-2">
         <div className="text-[10px] uppercase tracking-wider text-gray-500">
-          {SLOT_LABELS[slot]}
+          {weaponName}
         </div>
         {isOverridden && (
           <div className="text-[9px] text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded font-medium">
