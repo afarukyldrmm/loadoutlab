@@ -7,6 +7,9 @@ import {
   SLOT_LABELS,
   THEME_TAGS,
   RARITY_COLORS,
+  ALL_SLOTS,
+  SLOT_GROUPS,
+  LOADOUT_PRESETS,
   recommendLoadout,
   affiliateUrl,
   findAlternatives,
@@ -16,19 +19,6 @@ interface Props {
   allSkins: Skin[];
 }
 
-const SLOT_ORDER: Slot[] = [
-  'rifle_t',
-  'rifle_ct',
-  'sniper',
-  'pistol_t',
-  'pistol_ct',
-  'pistol_shared',
-  'smg',
-  'heavy',
-  'knife',
-  'glove',
-];
-
 const BUDGET_PRESETS = [
   { label: '50€', value: 50 },
   { label: '150€', value: 150 },
@@ -37,11 +27,13 @@ const BUDGET_PRESETS = [
   { label: '5.000€', value: 5000 },
 ];
 
+// "Klasik" preset varsayılan başlangıç
+const DEFAULT_SLOTS: Slot[] = LOADOUT_PRESETS.find((p) => p.id === 'classic')!.slots;
+
 export default function LoadoutBuilder({ allSkins }: Props) {
   const [budget, setBudget] = useState(500);
   const [themeTag, setThemeTag] = useState<string | undefined>(undefined);
-  const [includeKnife, setIncludeKnife] = useState(true);
-  const [includeGloves, setIncludeGloves] = useState(true);
+  const [enabledSlots, setEnabledSlots] = useState<Set<Slot>>(new Set(DEFAULT_SLOTS));
   const [regenKey, setRegenKey] = useState(0);
   const [overrides, setOverrides] = useState<Partial<Record<Slot, Skin>>>({});
 
@@ -49,12 +41,11 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     return recommendLoadout(allSkins, {
       budget,
       themeTag,
-      includeKnife,
-      includeGloves,
+      enabledSlots: Array.from(enabledSlots),
       variationSeed: regenKey,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget, themeTag, includeKnife, includeGloves, regenKey, allSkins]);
+  }, [budget, themeTag, enabledSlots, regenKey, allSkins]);
 
   const finalItems = useMemo(() => {
     const merged = { ...loadout.items };
@@ -71,12 +62,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     );
   }, [finalItems]);
 
-  const activeSlots = SLOT_ORDER.filter((s) => {
-    if (s === 'knife' && !includeKnife) return false;
-    if (s === 'glove' && !includeGloves) return false;
-    return true;
-  });
-
+  const activeSlotList = ALL_SLOTS.filter((s) => enabledSlots.has(s));
   const remainder = budget - totalPrice;
 
   function changeBudget(newBudget: number) {
@@ -91,6 +77,21 @@ export default function LoadoutBuilder({ allSkins }: Props) {
 
   function regenerate() {
     setRegenKey((k) => k + 1);
+    setOverrides({});
+  }
+
+  function toggleSlot(slot: Slot) {
+    setEnabledSlots((prev) => {
+      const next = new Set(prev);
+      if (next.has(slot)) next.delete(slot);
+      else next.add(slot);
+      return next;
+    });
+    setOverrides({});
+  }
+
+  function applyPreset(slots: Slot[]) {
+    setEnabledSlots(new Set(slots));
     setOverrides({});
   }
 
@@ -136,10 +137,72 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           </div>
         </div>
 
+        {/* SLOT (silah) seçimi */}
         <div className="mb-6">
-          <label className="text-sm text-gray-400 mb-2 block">
-            Renk (opsiyonel)
-          </label>
+          <div className="flex items-baseline justify-between mb-2">
+            <label className="text-sm text-gray-400">
+              Dahil edilecek silahlar
+            </label>
+            <span className="text-xs text-gray-600">
+              {enabledSlots.size} slot seçili
+            </span>
+          </div>
+
+          <div className="flex gap-2 flex-wrap mb-4">
+            {LOADOUT_PRESETS.map((p) => {
+              const isMatch =
+                p.slots.length === enabledSlots.size &&
+                p.slots.every((s) => enabledSlots.has(s));
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => applyPreset(p.slots)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    isMatch
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="bg-[var(--bg-tertiary)] rounded-md p-4 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2">
+            {SLOT_GROUPS.map((group) => (
+              <div key={group.label}>
+                <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                  {group.label}
+                </div>
+                {group.slots.map((slot) => (
+                  <label
+                    key={slot}
+                    className="flex items-center gap-2 py-1.5 cursor-pointer group"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enabledSlots.has(slot)}
+                      onChange={() => toggleSlot(slot)}
+                      className="w-4 h-4 accent-orange-500"
+                    />
+                    <span
+                      className={`text-xs ${
+                        enabledSlots.has(slot) ? 'text-gray-200' : 'text-gray-500'
+                      } group-hover:text-white transition-colors`}
+                    >
+                      {SLOT_LABELS[slot]}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Renk ve stil filtreleri */}
+        <div className="mb-6">
+          <label className="text-sm text-gray-400 mb-2 block">Renk (opsiyonel)</label>
           <div className="flex gap-2 flex-wrap mb-3">
             <button
               onClick={() => changeTheme(undefined)}
@@ -183,34 +246,10 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeKnife}
-              onChange={(e) => {
-                setIncludeKnife(e.target.checked);
-                setOverrides({});
-              }}
-              className="w-4 h-4 accent-orange-500"
-            />
-            <span className="text-sm">Bıçak dahil</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeGloves}
-              onChange={(e) => {
-                setIncludeGloves(e.target.checked);
-                setOverrides({});
-              }}
-              className="w-4 h-4 accent-orange-500"
-            />
-            <span className="text-sm">Eldiven dahil</span>
-          </label>
+        <div className="flex justify-end">
           <button
             onClick={regenerate}
-            className="ml-auto px-4 py-1.5 bg-[var(--bg-tertiary)] hover:bg-gray-700 text-white text-sm font-medium rounded-md transition-colors"
+            className="px-4 py-1.5 bg-[var(--bg-tertiary)] hover:bg-gray-700 text-white text-sm font-medium rounded-md transition-colors"
           >
             ↻ Yeniden öner
           </button>
@@ -244,26 +283,26 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-in">
-        {activeSlots.map((slot) => {
-          const skin = finalItems[slot];
-          return (
-            <SlotCard
-              key={slot}
-              slot={slot}
-              skin={skin}
-              allSkins={allSkins}
-              themeTag={themeTag}
-              onSwap={(newSkin) => swapSlotSkin(slot, newSkin)}
-              isOverridden={!!overrides[slot]}
-            />
-          );
-        })}
-      </div>
-
-      {Object.keys(finalItems).length === 0 && (
+      {activeSlotList.length === 0 ? (
         <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-8 text-center text-gray-400">
-          Bu filtrelerle uygun loadout bulunamadı.
+          En az bir silah seç. Yukarıdan slot seçimi yapabilirsin.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-in">
+          {activeSlotList.map((slot) => {
+            const skin = finalItems[slot];
+            return (
+              <SlotCard
+                key={slot}
+                slot={slot}
+                skin={skin}
+                allSkins={allSkins}
+                themeTag={themeTag}
+                onSwap={(newSkin) => swapSlotSkin(slot, newSkin)}
+                isOverridden={!!overrides[slot]}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -324,9 +363,7 @@ function SlotCard({ slot, skin, allSkins, themeTag, onSwap, isOverridden }: Slot
       </div>
 
       <div className="flex-1">
-        <div className={`text-xs font-medium mb-1 ${rarityColor}`}>
-          {skin.rarity}
-        </div>
+        <div className={`text-xs font-medium mb-1 ${rarityColor}`}>{skin.rarity}</div>
         <div className="text-sm font-semibold leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
           {skin.name}
         </div>

@@ -60,7 +60,7 @@ export const SLOT_LABELS: Record<Slot, string> = {
   glove: 'Gloves',
 };
 
-const ALL_SLOTS: Slot[] = [
+export const ALL_SLOTS: Slot[] = [
   'rifle_t',
   'rifle_ct',
   'sniper',
@@ -71,6 +71,44 @@ const ALL_SLOTS: Slot[] = [
   'heavy',
   'knife',
   'glove',
+];
+
+// Slot kategorileri (UI'da gruplama için)
+export const SLOT_GROUPS: { label: string; slots: Slot[] }[] = [
+  { label: 'Tüfekler', slots: ['rifle_t', 'rifle_ct'] },
+  { label: 'Sniper', slots: ['sniper'] },
+  { label: 'Tabancalar', slots: ['pistol_t', 'pistol_ct', 'pistol_shared'] },
+  { label: 'Diğer', slots: ['smg', 'heavy'] },
+  { label: 'Ekstra', slots: ['knife', 'glove'] },
+];
+
+// Hazır preset'ler — kullanıcı hızlıca seçebilsin
+export const LOADOUT_PRESETS: { id: string; label: string; slots: Slot[] }[] = [
+  {
+    id: 'classic',
+    label: 'Klasik',
+    slots: ['rifle_t', 'rifle_ct', 'sniper', 'pistol_shared', 'knife', 'glove'],
+  },
+  {
+    id: 'full',
+    label: 'Hepsi',
+    slots: [...ALL_SLOTS],
+  },
+  {
+    id: 'rifles_only',
+    label: 'Sadece tüfekler',
+    slots: ['rifle_t', 'rifle_ct', 'sniper'],
+  },
+  {
+    id: 'pistols_only',
+    label: 'Sadece tabancalar',
+    slots: ['pistol_t', 'pistol_ct', 'pistol_shared'],
+  },
+  {
+    id: 'show_pieces',
+    label: 'Show-piece (bıçak + eldiven)',
+    slots: ['knife', 'glove'],
+  },
 ];
 
 // Manuel etiketleri import et — bunlar otomatik etiketleri ezer (override eder)
@@ -129,8 +167,7 @@ export function getEffectiveTags(skin: Skin): string[] {
 export interface RecommendOptions {
   budget: number;
   themeTag?: string; // e.g. 'red', 'cyberpunk'
-  includeKnife: boolean;
-  includeGloves: boolean;
+  enabledSlots: Slot[]; // explicit list of slots to include
   variationSeed?: number; // for "regenerate" button to produce different picks
 }
 
@@ -156,7 +193,7 @@ export function recommendLoadout(
   allSkins: Skin[],
   options: RecommendOptions
 ): Loadout {
-  const { budget, themeTag, includeKnife, includeGloves, variationSeed = 0 } = options;
+  const { budget, themeTag, enabledSlots, variationSeed = 0 } = options;
 
   // Deterministic pseudo-random based on seed for "regenerate" reproducibility within a session
   let rngState = variationSeed * 2654435761;
@@ -166,11 +203,8 @@ export function recommendLoadout(
   };
 
   // Active slots
-  const activeSlots = ALL_SLOTS.filter((s) => {
-    if (s === 'knife' && !includeKnife) return false;
-    if (s === 'glove' && !includeGloves) return false;
-    return true;
-  });
+  // Use only the slots that the user enabled
+  const activeSlots = ALL_SLOTS.filter((s) => enabledSlots.includes(s));
 
   // Normalize weights
   const totalWeight = activeSlots.reduce((sum, s) => sum + SLOT_WEIGHTS[s], 0);
