@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0e14;
+  --bg-secondary: #131820;
+  --bg-tertiary: #1c232e;
+  --border: #2a3340;
+  --text-primary: #e5e7eb;
+  --text-secondary: #9ca3af;
+  --accent: #f97316;
+  --accent-hover: #ea580c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Subtle CS2-inspired gradient background */
+body {
+  background-image:
+    radial-gradient(at 20% 0%, rgba(249, 115, 22, 0.08) 0%, transparent 50%),
+    radial-gradient(at 80% 100%, rgba(75, 105, 255, 0.05) 0%, transparent 50%);
+  min-height: 100vh;
+}
+
+/* Card hover lift */
+.skin-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.skin-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Custom range slider */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  background: var(--bg-tertiary);
+  height: 6px;
+  border-radius: 3px;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--accent);
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  margin-top: -7px;
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.4);
+}
+input[type='range']::-moz-range-track {
+  background: var(--bg-tertiary);
+  height: 6px;
+  border-radius: 3px;
+}
+input[type='range']::-moz-range-thumb {
+  background: var(--accent);
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-primary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.3s ease forwards; }
