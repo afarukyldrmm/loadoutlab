@@ -145,32 +145,56 @@ export const WEAPON_BY_NAME: Record<string, WeaponDef> = Object.fromEntries(
   WEAPONS.map((w) => [w.name, w])
 );
 
-// Hazır preset'ler
-export const LOADOUT_PRESETS: { id: string; label: string; weapons: string[] }[] = [
+// Hazır preset'ler — oyun stiline göre
+export const LOADOUT_PRESETS: { id: string; label: string; icon: string; description: string; weapons: string[] }[] = [
   {
     id: 'classic',
     label: 'Klasik',
+    icon: '⚔️',
+    description: 'En sık kullanılan silahlar',
     weapons: ['AK-47', 'M4A4', 'AWP', 'Desert Eagle', 'Karambit', 'Sport Gloves'],
   },
   {
-    id: 'competitive',
-    label: 'Rekabetçi (Pro)',
-    weapons: ['AK-47', 'M4A1-S', 'AWP', 'Desert Eagle', 'Glock-18', 'USP-S', 'Karambit', 'Sport Gloves'],
+    id: 'awper',
+    label: "AWP'er",
+    icon: '🎯',
+    description: 'Sniper odaklı oyun',
+    weapons: ['AWP', 'Desert Eagle', 'USP-S', 'Glock-18', 'Karambit', 'Sport Gloves'],
   },
   {
-    id: 'rifles_only',
-    label: 'Sadece Tüfekler',
+    id: 'entry',
+    label: 'Entry Fragger',
+    icon: '🔥',
+    description: 'Saldırgan, tüfek ağırlıklı',
+    weapons: ['AK-47', 'M4A4', 'Glock-18', 'Desert Eagle', 'MAC-10', 'Karambit', 'Sport Gloves'],
+  },
+  {
+    id: 'anchor',
+    label: 'Site Anchor',
+    icon: '🛡️',
+    description: 'CT savunma odaklı',
+    weapons: ['M4A1-S', 'AWP', 'USP-S', 'Desert Eagle', 'MP9', 'Karambit', 'Sport Gloves'],
+  },
+  {
+    id: 'rifler',
+    label: 'Rifler',
+    icon: '💪',
+    description: 'Sadece tüfekler',
     weapons: ['AK-47', 'M4A4', 'M4A1-S', 'AWP'],
   },
   {
-    id: 'pistols_only',
-    label: 'Sadece Tabancalar',
-    weapons: ['Glock-18', 'USP-S', 'Desert Eagle'],
+    id: 'showpiece',
+    label: 'Showpiece',
+    icon: '🎭',
+    description: 'Sadece bıçak + eldiven',
+    weapons: ['Karambit', 'Sport Gloves'],
   },
   {
-    id: 'show_pieces',
-    label: 'Bıçak + Eldiven',
-    weapons: ['Karambit', 'Sport Gloves'],
+    id: 'all',
+    label: 'Hepsi',
+    icon: '📦',
+    description: 'Tüm 50+ silah modeli',
+    weapons: WEAPONS.map((w) => w.name),
   },
 ];
 
@@ -193,6 +217,7 @@ export const SLOT_LABELS: Record<Slot, string> = {
 // ============================================================
 
 import { MANUAL_TAGS } from './manual_tags';
+import { MANUAL_COLOR_OVERRIDES } from './manual_color_overrides';
 
 let VISUAL_COLOR_TAGS: Record<string, string[]> = {};
 try {
@@ -202,30 +227,77 @@ try {
   VISUAL_COLOR_TAGS = {};
 }
 
+const COLOR_TAGS = ['red', 'blue', 'green', 'purple', 'gold', 'black', 'white', 'orange', 'pink'];
+
+// Birbiriyle uyumlu / yakın renk grupları
+// Mavi seçildiğinde mor/cyan da kabul edilir gibi
+export const COLOR_NEIGHBORS: Record<string, string[]> = {
+  red:    ['red', 'orange', 'pink'],
+  orange: ['orange', 'red', 'gold'],
+  gold:   ['gold', 'orange', 'white'],
+  pink:   ['pink', 'red', 'purple'],
+  purple: ['purple', 'pink', 'blue'],
+  blue:   ['blue', 'purple'],
+  green:  ['green'],
+  black:  ['black'],
+  white:  ['white', 'gold'],
+};
+
+/**
+ * Bir skin için doğru renk/stil etiketleri.
+ * Öncelik sırası:
+ *  1. MANUEL düzeltmeler (en güvenilir, elle kontrol edildi)
+ *  2. GÖRSEL analiz (Python K-means)
+ *  3. OTOMATİK isim etiketi (fallback)
+ *
+ * Stil etiketleri (cyberpunk, vintage, vs.) tüm kaynaklardan birleştirilir.
+ */
 export function getEffectiveTags(skin: Skin): string[] {
+  const override = MANUAL_COLOR_OVERRIDES[skin.name];
   const visual = VISUAL_COLOR_TAGS[skin.name];
   const manual = MANUAL_TAGS[skin.name];
   const auto = skin.tags;
 
-  const colorTags = ['red', 'blue', 'green', 'purple', 'gold', 'black', 'white', 'orange', 'pink'];
-
+  // Renk seçimi: manuel override > visual > manuel (eski) > auto
   let chosenColors: string[] = [];
-  if (visual && visual.length > 0) {
-    chosenColors = visual.filter((t) => colorTags.includes(t));
+  if (override && override.length > 0) {
+    chosenColors = override.filter((t) => COLOR_TAGS.includes(t));
+  } else if (visual && visual.length > 0) {
+    chosenColors = visual.filter((t) => COLOR_TAGS.includes(t));
   } else if (manual) {
-    chosenColors = manual.filter((t) => colorTags.includes(t));
+    chosenColors = manual.filter((t) => COLOR_TAGS.includes(t));
   } else {
-    chosenColors = auto.filter((t) => colorTags.includes(t));
+    chosenColors = auto.filter((t) => COLOR_TAGS.includes(t));
   }
 
+  // Stil tag'leri: tüm kaynaklardan birleştir
   const styleTags = new Set<string>();
   [visual, manual, auto].forEach((src) => {
-    if (src) src.forEach((t) => {
-      if (!colorTags.includes(t)) styleTags.add(t);
-    });
+    if (src)
+      src.forEach((t) => {
+        if (!COLOR_TAGS.includes(t)) styleTags.add(t);
+      });
   });
 
   return [...chosenColors, ...Array.from(styleTags)];
+}
+
+/**
+ * Bir skin verilen tema/renk filtresine uyuyor mu?
+ * Renk filtresinde "komşu" renkleri de eşleştirir (daha hoşgörülü).
+ * Stil filtresinde tam eşleşme bekler.
+ */
+export function matchesThemeTag(skin: Skin, themeTag: string): boolean {
+  const tags = getEffectiveTags(skin);
+
+  // Stil filtresi (cyberpunk, vintage, vs.) — tam eşleşme
+  if (!COLOR_TAGS.includes(themeTag)) {
+    return tags.includes(themeTag);
+  }
+
+  // Renk filtresi — kendisi VEYA komşu rengi içermeli
+  const neighbors = COLOR_NEIGHBORS[themeTag] || [themeTag];
+  return tags.some((t) => neighbors.includes(t));
 }
 
 // ============================================================
@@ -286,7 +358,7 @@ export function recommendLoadout(
   const candidatesFor = (weaponName: string, applyTheme: boolean): Skin[] => {
     return allSkins.filter((s) => {
       if (s.weapon !== weaponName) return false;
-      if (applyTheme && themeTag && !getEffectiveTags(s).includes(themeTag)) return false;
+      if (applyTheme && themeTag && !matchesThemeTag(s, themeTag)) return false;
       return true;
     });
   };
@@ -396,7 +468,7 @@ export function findAlternatives(
     if (s.id === currentSkin.id) return false;
     if (s.entry_price < lower * 0.3) return false;
     if (s.entry_price > upper * 2) return false;
-    if (themeTag && !getEffectiveTags(s).includes(themeTag)) return false;
+    if (themeTag && !matchesThemeTag(s, themeTag)) return false;
     return true;
   });
 

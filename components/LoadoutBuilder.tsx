@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Skin,
   THEME_TAGS,
@@ -28,6 +28,19 @@ const BUDGET_PRESETS = [
 
 const DEFAULT_WEAPONS = LOADOUT_PRESETS.find((p) => p.id === 'classic')!.weapons;
 
+// Akıllı öneriler: hangi silahla birlikte sık seçilir
+const WEAPON_SUGGESTIONS: Record<string, string[]> = {
+  'AK-47': ['M4A4', 'M4A1-S', 'AWP', 'Desert Eagle', 'Karambit', 'Sport Gloves'],
+  'M4A4': ['AK-47', 'AWP', 'Desert Eagle', 'USP-S', 'Karambit'],
+  'M4A1-S': ['AK-47', 'AWP', 'USP-S', 'Desert Eagle', 'Karambit'],
+  'AWP': ['AK-47', 'Desert Eagle', 'USP-S', 'Glock-18', 'Karambit'],
+  'Desert Eagle': ['AK-47', 'M4A4', 'AWP', 'Karambit'],
+  'Glock-18': ['AK-47', 'AWP', 'Desert Eagle', 'MAC-10'],
+  'USP-S': ['M4A1-S', 'M4A4', 'AWP', 'Desert Eagle', 'MP9'],
+  'Karambit': ['AK-47', 'M4A4', 'AWP', 'Sport Gloves'],
+  'Sport Gloves': ['Karambit', 'Butterfly Knife', 'AK-47'],
+};
+
 export default function LoadoutBuilder({ allSkins }: Props) {
   const [budget, setBudget] = useState(500);
   const [themeTag, setThemeTag] = useState<string | undefined>(undefined);
@@ -36,7 +49,21 @@ export default function LoadoutBuilder({ allSkins }: Props) {
   );
   const [regenKey, setRegenKey] = useState(0);
   const [overrides, setOverrides] = useState<Record<string, Skin>>({});
-  const [weaponPanelOpen, setWeaponPanelOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [showAllWeapons, setShowAllWeapons] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Click outside to close search
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const loadout = useMemo(() => {
     return recommendLoadout(allSkins, {
@@ -63,30 +90,48 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     );
   }, [finalItems]);
 
-  // Aktif silahları sırala — bütçe ağırlığına göre
   const activeWeaponList = useMemo(() => {
     return Array.from(enabledWeapons).sort(
       (a, b) => (WEAPON_BY_NAME[b]?.weight ?? 0) - (WEAPON_BY_NAME[a]?.weight ?? 0)
     );
   }, [enabledWeapons]);
 
+  // Arama: seçili olmayan silahlar arasında query'ye uyanlar
+  const searchResults = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return WEAPONS.filter((w) => {
+      if (enabledWeapons.has(w.name)) return false;
+      if (!q) return true;
+      return w.name.toLowerCase().includes(q);
+    }).slice(0, 8);
+  }, [searchQuery, enabledWeapons]);
+
+  // Akıllı öneriler: seçili silahların önerdiklerinden seçili olmayanlar
+  const smartSuggestions = useMemo(() => {
+    const suggestions = new Set<string>();
+    for (const w of enabledWeapons) {
+      const recs = WEAPON_SUGGESTIONS[w] || [];
+      for (const rec of recs) {
+        if (!enabledWeapons.has(rec)) suggestions.add(rec);
+      }
+    }
+    return Array.from(suggestions).slice(0, 4);
+  }, [enabledWeapons]);
+
   const remainder = budget - totalPrice;
 
-  function changeBudget(newBudget: number) {
-    setBudget(newBudget);
+  function changeBudget(v: number) {
+    setBudget(v);
     setOverrides({});
   }
-
   function changeTheme(tag: string | undefined) {
     setThemeTag(tag);
     setOverrides({});
   }
-
   function regenerate() {
     setRegenKey((k) => k + 1);
     setOverrides({});
   }
-
   function toggleWeapon(weaponName: string) {
     setEnabledWeapons((prev) => {
       const next = new Set(prev);
@@ -96,12 +141,23 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     });
     setOverrides({});
   }
-
+  function addWeapon(weaponName: string) {
+    setEnabledWeapons((prev) => new Set([...prev, weaponName]));
+    setOverrides({});
+    setSearchQuery('');
+  }
+  function removeWeapon(weaponName: string) {
+    setEnabledWeapons((prev) => {
+      const next = new Set(prev);
+      next.delete(weaponName);
+      return next;
+    });
+    setOverrides({});
+  }
   function applyPreset(weapons: string[]) {
     setEnabledWeapons(new Set(weapons));
     setOverrides({});
   }
-
   function swapSkin(weaponName: string, newSkin: Skin) {
     setOverrides((o) => ({ ...o, [weaponName]: newSkin }));
   }
@@ -145,16 +201,10 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           </div>
         </div>
 
-        {/* SİLAH SEÇİMİ */}
-        <div className="mb-6">
-          <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm text-gray-400">Silahlar</label>
-            <span className="text-xs text-gray-600">
-              {enabledWeapons.size} silah seçili
-            </span>
-          </div>
-
-          <div className="flex gap-2 flex-wrap mb-3">
+        {/* OYUN TARZI PRESET'LERİ */}
+        <div className="mb-4">
+          <label className="text-sm text-gray-400 mb-2 block">Oyun Tarzı</label>
+          <div className="flex gap-2 flex-wrap">
             {LOADOUT_PRESETS.map((p) => {
               const isMatch =
                 p.weapons.length === enabledWeapons.size &&
@@ -163,30 +213,130 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 <button
                   key={p.id}
                   onClick={() => applyPreset(p.weapons)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  title={p.description}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     isMatch
                       ? 'bg-orange-500 text-white'
                       : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
                   }`}
                 >
-                  {p.label}
+                  <span>{p.icon}</span>
+                  <span>{p.label}</span>
                 </button>
               );
             })}
           </div>
+        </div>
 
+        {/* SİLAH ARAMA + ETİKETLER */}
+        <div className="mb-6">
+          <div className="flex items-baseline justify-between mb-2">
+            <label className="text-sm text-gray-400">Silahlar</label>
+            <span className="text-xs text-gray-600">{enabledWeapons.size} seçili</span>
+          </div>
+
+          <div ref={searchRef} className="relative">
+            <div
+              className={`bg-[var(--bg-tertiary)] border rounded-lg p-2 transition-colors min-h-[44px] flex flex-wrap gap-1.5 items-center ${
+                searchFocused ? 'border-orange-500/50' : 'border-gray-700'
+              }`}
+              onClick={() => {
+                setSearchFocused(true);
+                const input = searchRef.current?.querySelector('input');
+                input?.focus();
+              }}
+            >
+              {activeWeaponList.map((weaponName) => {
+                const def = WEAPON_BY_NAME[weaponName];
+                return (
+                  <span
+                    key={weaponName}
+                    className="inline-flex items-center gap-1 bg-orange-500 text-white text-xs font-medium px-2 py-1 rounded"
+                  >
+                    {weaponName}
+                    {def?.team !== 'shared' && (
+                      <span className="opacity-60">({def.team})</span>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeWeapon(weaponName);
+                      }}
+                      className="opacity-70 hover:opacity-100 ml-0.5"
+                      aria-label={`${weaponName} kaldır`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                placeholder={
+                  activeWeaponList.length === 0 ? 'Silah ara...' : 'Silah ekle...'
+                }
+                className="bg-transparent border-none text-gray-200 text-sm flex-1 min-w-[120px] outline-none px-1 py-1"
+              />
+            </div>
+
+            {/* Arama sonuçları dropdown */}
+            {searchFocused && searchResults.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--bg-tertiary)] border border-gray-700 rounded-lg shadow-xl z-10 max-h-72 overflow-y-auto">
+                {searchResults.map((w) => (
+                  <button
+                    key={w.name}
+                    onClick={() => addWeapon(w.name)}
+                    className="w-full text-left px-3 py-2 hover:bg-orange-500/10 transition-colors flex items-center justify-between"
+                  >
+                    <span className="text-sm text-gray-200">
+                      {w.name}
+                      {w.team !== 'shared' && (
+                        <span className="text-gray-500 ml-1">({w.team})</span>
+                      )}
+                    </span>
+                    <span className="text-xs text-gray-500 capitalize">
+                      {WEAPON_CATEGORIES.find((c) => c.id === w.category)?.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Akıllı öneriler */}
+          {smartSuggestions.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap mt-2">
+              <span className="text-xs text-gray-500">Önerilen:</span>
+              {smartSuggestions.map((w) => (
+                <button
+                  key={w}
+                  onClick={() => addWeapon(w)}
+                  className="px-2 py-0.5 bg-[var(--bg-tertiary)] hover:bg-orange-500/10 text-gray-400 hover:text-orange-400 text-xs rounded border border-gray-700 hover:border-orange-500/50 transition-colors"
+                >
+                  + {w}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Hepsini gör */}
           <button
-            onClick={() => setWeaponPanelOpen((v) => !v)}
-            className="text-xs text-gray-400 hover:text-orange-400 transition-colors flex items-center gap-1 mb-3"
+            onClick={() => setShowAllWeapons((v) => !v)}
+            className="text-xs text-gray-500 hover:text-orange-400 transition-colors mt-3"
           >
-            {weaponPanelOpen ? '▾' : '▸'} Silah listesini {weaponPanelOpen ? 'gizle' : 'göster'} (detaylı seçim)
+            {showAllWeapons ? '↑ Tüm silah listesini gizle' : '↓ Tüm silahları detaylı seç'}
           </button>
 
-          {weaponPanelOpen && (
-            <div className="bg-[var(--bg-tertiary)] rounded-md p-4 space-y-4">
+          {showAllWeapons && (
+            <div className="mt-3 bg-[var(--bg-tertiary)] rounded-md p-4 space-y-4">
               {WEAPON_CATEGORIES.map((cat) => {
                 const catWeapons = WEAPONS.filter((w) => w.category === cat.id);
-                const selectedInCat = catWeapons.filter((w) => enabledWeapons.has(w.name)).length;
+                const selectedInCat = catWeapons.filter((w) =>
+                  enabledWeapons.has(w.name)
+                ).length;
                 return (
                   <div key={cat.id}>
                     <div className="flex items-center justify-between mb-2">
@@ -206,7 +356,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                             });
                             setOverrides({});
                           }}
-                          className="text-[10px] text-gray-500 hover:text-orange-400 transition-colors"
+                          className="text-[10px] text-gray-500 hover:text-orange-400"
                         >
                           Hepsi
                         </button>
@@ -220,7 +370,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                             });
                             setOverrides({});
                           }}
-                          className="text-[10px] text-gray-500 hover:text-orange-400 transition-colors"
+                          className="text-[10px] text-gray-500 hover:text-orange-400"
                         >
                           Hiçbiri
                         </button>
@@ -230,7 +380,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                       {catWeapons.map((w) => (
                         <label
                           key={w.name}
-                          className="flex items-center gap-2 py-1 cursor-pointer group"
+                          className="flex items-center gap-2 py-1 cursor-pointer"
                         >
                           <input
                             type="checkbox"
@@ -243,7 +393,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                               enabledWeapons.has(w.name)
                                 ? 'text-gray-200'
                                 : 'text-gray-500'
-                            } group-hover:text-white transition-colors truncate`}
+                            } truncate`}
                           >
                             {w.name}
                             {w.team !== 'shared' && (
@@ -320,20 +470,14 @@ export default function LoadoutBuilder({ allSkins }: Props) {
 
       <div className="bg-gradient-to-r from-orange-500/10 to-orange-600/5 border border-orange-500/30 rounded-xl p-5 mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <div className="text-xs text-gray-400 uppercase tracking-wider">
-            Toplam Tahmini
-          </div>
+          <div className="text-xs text-gray-400 uppercase tracking-wider">Toplam Tahmini</div>
           <div className="text-3xl font-bold mt-1">
             {totalPrice.toFixed(2)}€
-            <span className="text-sm text-gray-500 font-normal ml-2">
-              / {budget}€ bütçe
-            </span>
+            <span className="text-sm text-gray-500 font-normal ml-2">/ {budget}€ bütçe</span>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xs text-gray-400 uppercase tracking-wider">
-            Kalan
-          </div>
+          <div className="text-xs text-gray-400 uppercase tracking-wider">Kalan</div>
           <div
             className={`text-2xl font-bold mt-1 ${
               remainder >= 0 ? 'text-green-400' : 'text-red-400'
@@ -347,7 +491,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
 
       {activeWeaponList.length === 0 ? (
         <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-8 text-center text-gray-400">
-          En az bir silah seç. Yukarıdan silah listesini açıp seçim yapabilirsin.
+          En az bir silah seç. Yukarıdan oyun tarzı seç veya arama kutusunu kullan.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-in">
@@ -409,9 +553,7 @@ function WeaponCard({
   return (
     <div className="skin-card bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-4 hover:border-orange-500/50 flex flex-col">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500">
-          {weaponName}
-        </div>
+        <div className="text-[10px] uppercase tracking-wider text-gray-500">{weaponName}</div>
         {isOverridden && (
           <div className="text-[9px] text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded font-medium">
             ELLE DEĞİŞ
@@ -492,9 +634,7 @@ function WeaponCard({
       )}
 
       {showAlts && alternatives.length === 0 && (
-        <div className="text-xs text-gray-600 mt-2 text-center py-3">
-          Alternatif bulunamadı
-        </div>
+        <div className="text-xs text-gray-600 mt-2 text-center py-3">Alternatif bulunamadı</div>
       )}
     </div>
   );
