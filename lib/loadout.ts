@@ -307,6 +307,7 @@ export const SLOT_LABELS: Record<Slot, string> = {
 
 import { MANUAL_TAGS } from './manual_tags';
 import { MANUAL_COLOR_OVERRIDES } from './manual_color_overrides';
+import { detectPattern } from './pattern_skins';
 
 let VISUAL_COLOR_TAGS: Record<string, string[]> = {};
 try {
@@ -316,20 +317,27 @@ try {
   VISUAL_COLOR_TAGS = {};
 }
 
-const COLOR_TAGS = ['red', 'blue', 'green', 'purple', 'gold', 'black', 'white', 'orange', 'pink'];
+// v10: 12 renk — yellow/brown/gray AI çıktısıyla hizalandı, ilk-sınıf tema rengi
+const COLOR_TAGS = [
+  'red', 'blue', 'green', 'purple', 'gold', 'black', 'white', 'orange', 'pink',
+  'yellow', 'brown', 'gray',
+];
 
 // Birbiriyle uyumlu / yakın renk grupları
-// Mavi seçildiğinde mor/cyan da kabul edilir gibi
+// "Esnek" modda kullanılır: kullanıcı mavi seçtiğinde mor da kabul edilir gibi
 export const COLOR_NEIGHBORS: Record<string, string[]> = {
   red:    ['red', 'orange', 'pink'],
-  orange: ['orange', 'red', 'gold'],
-  gold:   ['gold', 'orange', 'white'],
+  orange: ['orange', 'red', 'gold', 'yellow'],
+  gold:   ['gold', 'orange', 'yellow', 'white'],
   pink:   ['pink', 'red', 'purple'],
   purple: ['purple', 'pink', 'blue'],
   blue:   ['blue', 'purple'],
   green:  ['green'],
-  black:  ['black'],
-  white:  ['white', 'gold'],
+  black:  ['black', 'gray'],
+  white:  ['white', 'gold', 'gray'],
+  yellow: ['yellow', 'gold', 'orange'],
+  brown:  ['brown', 'gold', 'orange'],
+  gray:   ['gray', 'black', 'white'],
 };
 
 /**
@@ -368,35 +376,71 @@ export function getEffectiveTags(skin: Skin): string[] {
       });
   });
 
+  // v10: pattern (desen) tipi varsa ek bir tag olarak ekle
+  // Bu sayede pattern skinler hem dominant rengiyle renk filtresine girer
+  // hem de "Doppler / Fade / Case Hardened" koleksiyon sekmelerinde görünür.
+  const pattern = detectPattern(skin.name);
+  if (pattern) styleTags.add(pattern);
+
   return [...chosenColors, ...Array.from(styleTags)];
 }
 
 /**
- * Bir skin verilen tema/renk filtresine uyuyor mu?
+ * v10: Çoklu renk + sıkı/esnek eşleşme.
  *
- * RENK eşleştirmesi: SIKI ve DOMINANT bazlı.
- * - AI ilk verdiği renkleri en baskın olarak veriyor (Vulcan → ['blue','white','black'])
- * - Biz sadece ilk 2 renge bakıyoruz — "biraz mavi var" yerine "baskın renklerden biri mavi"
- * - Komşu renk kabul yok: mavi seçilince sadece mavi gelir, mor gelmez
+ * @param skin   — kontrol edilen skin
+ * @param colors — kullanıcının seçtiği renkler (boş array = renk filtresi yok)
+ * @param styles — kullanıcının seçtiği stiller/desenler (boş array = stil filtresi yok)
+ * @param strict — true: sadece ilk renk dominant kabul; false: ilk 2 renk + komşular
  *
- * STIL eşleştirmesi: Tam eşleşme (cyberpunk, vintage, doppler-family vs.)
+ * Kural: skin uygun olmak için
+ *   - colors boş değilse: dominant rengi seçilen renklerden BİRİ olmalı
+ *   - styles boş değilse: tüm stil/desen tag'leri set'i seçili stillerin EN AZ BİRİSİYLE kesişmeli
+ *   - her iki filtre de geçilmeli (AND mantığı)
  */
-export function matchesThemeTag(skin: Skin, themeTag: string): boolean {
+export function matchesThemeFilter(
+  skin: Skin,
+  colors: string[],
+  styles: string[],
+  strict: boolean = true,
+): boolean {
   const tags = getEffectiveTags(skin);
+  const colorsOnly = tags.filter((t) => COLOR_TAGS.includes(t));
+  const stylesOnly = tags.filter((t) => !COLOR_TAGS.includes(t));
 
-  // Stil filtresi — tam eşleşme
-  if (!COLOR_TAGS.includes(themeTag)) {
-    return tags.includes(themeTag);
+  // Renk filtresi
+  if (colors.length > 0) {
+    if (colorsOnly.length === 0) return false;
+    const dominant = strict ? [colorsOnly[0]] : colorsOnly.slice(0, 2);
+    let colorMatch = false;
+    for (const wanted of colors) {
+      const acceptable = strict ? [wanted] : (COLOR_NEIGHBORS[wanted] ?? [wanted]);
+      if (dominant.some((c) => acceptable.includes(c))) {
+        colorMatch = true;
+        break;
+      }
+    }
+    if (!colorMatch) return false;
   }
 
-  // Renk filtresi — SADECE İLK RENK dominant kabul edilir
-  // En sıkı eşleşme. Hem manuel override hem AI verisinde aynı kural.
-  // Vulcan: ['blue','white'] → ilk 'blue' → mavi filtresi geçer ✓
-  // Case Hardened: ['gold','blue'] → ilk 'gold' → mavi filtresinde GELMEZ ✓
-  // Violet Beadwork: ['purple','blue',...] → ilk 'purple' → mavi filtresinde GELMEZ ✓
-  const colorsOnly = tags.filter((t) => COLOR_TAGS.includes(t));
-  if (colorsOnly.length === 0) return false;
-  return colorsOnly[0] === themeTag;
+  // Stil/Desen filtresi
+  if (styles.length > 0) {
+    const styleMatch = styles.some((s) => stylesOnly.includes(s));
+    if (!styleMatch) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Geriye uyumluluk için eski API. Tek renk/stil tag'i kabul eder.
+ * Strict modda çalışır (v9 davranışı).
+ */
+export function matchesThemeTag(skin: Skin, themeTag: string): boolean {
+  if (COLOR_TAGS.includes(themeTag)) {
+    return matchesThemeFilter(skin, [themeTag], [], true);
+  }
+  return matchesThemeFilter(skin, [], [themeTag], true);
 }
 
 // ============================================================
@@ -405,23 +449,60 @@ export function matchesThemeTag(skin: Skin, themeTag: string): boolean {
 
 export interface RecommendOptions {
   budget: number;
+  /** @deprecated v10: tek tag yerine themeColors + themeStyles kullan */
   themeTag?: string;
+  /** v10: çoklu renk seçimi — boş array = renk filtresi yok */
+  themeColors?: string[];
+  /** v10: çoklu stil/desen seçimi — boş array = stil filtresi yok */
+  themeStyles?: string[];
+  /** v10: sıkı (sadece ilk renk) vs esnek (ilk 2 + komşular). Default true. */
+  strictColor?: boolean;
+  /**
+   * v10: Tema filtresi seçildiğinde uyumlu skin yoksa fallback yapılsın mı?
+   * - true (default): Slot boş kalır, UI uyarı kartı gösterir. KESİN davranış.
+   * - false: Eski v9 davranışı — bulunamazsa filtre kalkar, herhangi bir skin seçilir.
+   */
+  respectThemeStrictly?: boolean;
   enabledWeapons: string[]; // ['AK-47', 'M4A4', 'AWP', ...]
   variationSeed?: number;
 }
 
 export interface Loadout {
   items: Record<string, Skin>; // weapon name -> skin
+  /**
+   * v10: Tema filtresi yüzünden doldurulamayan silahlar.
+   * UI uyarı kartı göstermek için: "Bu temada uygun {weapon} yok"
+   */
+  unmatchedWeapons?: string[];
   totalPrice: number;
   budget: number;
   themeTag?: string;
+  themeColors?: string[];
+  themeStyles?: string[];
 }
 
 export function recommendLoadout(
   allSkins: Skin[],
   options: RecommendOptions
 ): Loadout {
-  const { budget, themeTag, enabledWeapons, variationSeed = 0 } = options;
+  const {
+    budget,
+    themeTag,
+    themeColors = [],
+    themeStyles = [],
+    strictColor = true,
+    respectThemeStrictly = true,
+    enabledWeapons,
+    variationSeed = 0,
+  } = options;
+
+  // Geriye uyumluluk: eski API themeTag verilmiş ama yeni alanlar boşsa, eskiyi çevir
+  let activeColors = themeColors;
+  let activeStyles = themeStyles;
+  if (themeTag && activeColors.length === 0 && activeStyles.length === 0) {
+    if (COLOR_TAGS.includes(themeTag)) activeColors = [themeTag];
+    else activeStyles = [themeTag];
+  }
 
   // Deterministik random (variation seed)
   let rngState = variationSeed * 2654435761;
@@ -433,8 +514,17 @@ export function recommendLoadout(
   // Aktif silahlar (geçerli olanlar)
   const activeWeapons = enabledWeapons.filter((w) => w in WEAPON_BY_NAME);
   if (activeWeapons.length === 0) {
-    return { items: {}, totalPrice: 0, budget, themeTag };
+    return {
+      items: {},
+      totalPrice: 0,
+      budget,
+      themeTag,
+      themeColors: activeColors,
+      themeStyles: activeStyles,
+    };
   }
+
+  const hasThemeFilter = activeColors.length > 0 || activeStyles.length > 0;
 
   // Ağırlıkları normalize et — toplam = 1
   const totalWeight = activeWeapons.reduce(
@@ -447,6 +537,7 @@ export function recommendLoadout(
   }
 
   const items: Record<string, Skin> = {};
+  const unmatchedWeapons: string[] = [];
   let totalSpent = 0;
 
   // Önem sırasına göre işle (önemli silahlar önce, kalan bütçe önemsizler için)
@@ -457,7 +548,13 @@ export function recommendLoadout(
   const candidatesFor = (weaponName: string, applyTheme: boolean): Skin[] => {
     return allSkins.filter((s) => {
       if (s.weapon !== weaponName) return false;
-      if (applyTheme && themeTag && !matchesThemeTag(s, themeTag)) return false;
+      if (
+        applyTheme &&
+        hasThemeFilter &&
+        !matchesThemeFilter(s, activeColors, activeStyles, strictColor)
+      ) {
+        return false;
+      }
       return true;
     });
   };
@@ -474,9 +571,15 @@ export function recommendLoadout(
     );
 
     let pick: Skin | undefined;
+    let pickedWithTheme = false;
 
-    // Önce tema ile dene, bulunamazsa tema olmadan
-    for (const useTheme of [true, false]) {
+    // v10: Tema sıkı modda (default) → sadece tema ile dene; yoksa fallback YAPMA.
+    // Eski v9 davranışı için respectThemeStrictly=false geçilebilir.
+    const themeAttempts: boolean[] = hasThemeFilter
+      ? (respectThemeStrictly ? [true] : [true, false])
+      : [false];
+
+    for (const useTheme of themeAttempts) {
       const candidates = candidatesFor(weaponName, useTheme).filter(
         (c) => c.entry_price <= maxAllowed
       );
@@ -497,12 +600,16 @@ export function recommendLoadout(
         const sorted = candidates.sort((a, b) => b.entry_price - a.entry_price);
         pick = sorted[Math.floor(rand() * Math.min(2, sorted.length))];
       }
+      pickedWithTheme = useTheme;
       break;
     }
 
     if (pick) {
       items[weaponName] = pick;
       totalSpent += pick.entry_price;
+    } else if (hasThemeFilter) {
+      // Tema seçili ama uygun skin yok → slot boş, uyarı listesine ekle
+      unmatchedWeapons.push(weaponName);
     }
   }
 
@@ -515,7 +622,12 @@ export function recommendLoadout(
       if (!current) continue;
       const upgradeBudget = current.entry_price + headroom;
 
-      for (const useTheme of [true, false]) {
+      // v10: upgrade pass de tema sıkı kuralına uyar
+      const upgradeAttempts: boolean[] = hasThemeFilter
+        ? (respectThemeStrictly ? [true] : [true, false])
+        : [false];
+
+      for (const useTheme of upgradeAttempts) {
         const better = candidatesFor(weaponName, useTheme)
           .filter(
             (s) =>
@@ -535,7 +647,15 @@ export function recommendLoadout(
     }
   }
 
-  return { items, totalPrice: totalSpent, budget, themeTag };
+  return {
+    items,
+    unmatchedWeapons: unmatchedWeapons.length > 0 ? unmatchedWeapons : undefined,
+    totalPrice: totalSpent,
+    budget,
+    themeTag,
+    themeColors: activeColors,
+    themeStyles: activeStyles,
+  };
 }
 
 function sumQuantity(s: Skin): number {
@@ -550,12 +670,32 @@ export function findAlternatives(
   allSkins: Skin[],
   currentSkin: Skin,
   options: {
+    /** @deprecated v10: themeColors + themeStyles kullan */
     themeTag?: string;
+    themeColors?: string[];
+    themeStyles?: string[];
+    strictColor?: boolean;
     maxResults?: number;
     priceTolerancePct?: number;
   } = {}
 ): Skin[] {
-  const { themeTag, maxResults = 8, priceTolerancePct = 0.5 } = options;
+  const {
+    themeTag,
+    themeColors = [],
+    themeStyles = [],
+    strictColor = true,
+    maxResults = 8,
+    priceTolerancePct = 0.5,
+  } = options;
+
+  // Geriye uyumluluk
+  let activeColors = themeColors;
+  let activeStyles = themeStyles;
+  if (themeTag && activeColors.length === 0 && activeStyles.length === 0) {
+    if (COLOR_TAGS.includes(themeTag)) activeColors = [themeTag];
+    else activeStyles = [themeTag];
+  }
+  const hasThemeFilter = activeColors.length > 0 || activeStyles.length > 0;
 
   const targetPrice = currentSkin.entry_price;
   const lower = targetPrice * (1 - priceTolerancePct);
@@ -567,7 +707,12 @@ export function findAlternatives(
     if (s.id === currentSkin.id) return false;
     if (s.entry_price < lower * 0.3) return false;
     if (s.entry_price > upper * 2) return false;
-    if (themeTag && !matchesThemeTag(s, themeTag)) return false;
+    if (
+      hasThemeFilter &&
+      !matchesThemeFilter(s, activeColors, activeStyles, strictColor)
+    ) {
+      return false;
+    }
     return true;
   });
 
@@ -598,6 +743,7 @@ export function affiliateUrl(originalUrl: string, source: string = 'loadoutlab')
 }
 
 export const THEME_TAGS = [
+  // Renkler (12) — kullanıcı çoklu seçim yapabilir
   { id: 'red', label: 'Kırmızı', kind: 'color' as const },
   { id: 'blue', label: 'Mavi', kind: 'color' as const },
   { id: 'green', label: 'Yeşil', kind: 'color' as const },
@@ -605,13 +751,31 @@ export const THEME_TAGS = [
   { id: 'purple', label: 'Mor', kind: 'color' as const },
   { id: 'pink', label: 'Pembe', kind: 'color' as const },
   { id: 'orange', label: 'Turuncu', kind: 'color' as const },
+  { id: 'yellow', label: 'Sarı', kind: 'color' as const },
+  { id: 'brown', label: 'Kahverengi', kind: 'color' as const },
+  { id: 'gray', label: 'Gri', kind: 'color' as const },
   { id: 'black', label: 'Siyah', kind: 'color' as const },
   { id: 'white', label: 'Beyaz', kind: 'color' as const },
+  // Stiller
   { id: 'cyberpunk', label: 'Cyberpunk', kind: 'style' as const },
   { id: 'neon', label: 'Neon', kind: 'style' as const },
   { id: 'vintage', label: 'Vintage', kind: 'style' as const },
   { id: 'military', label: 'Military', kind: 'style' as const },
   { id: 'premium', label: 'Premium', kind: 'style' as const },
+  { id: 'tactical', label: 'Tactical', kind: 'style' as const },
+  { id: 'futuristic', label: 'Futuristic', kind: 'style' as const },
+  // Desenler (pattern aileleri) — pattern_skins.ts'de detectPattern ile eşleşir
+  { id: 'doppler', label: 'Doppler', kind: 'pattern' as const },
+  { id: 'gamma-doppler', label: 'Gamma Doppler', kind: 'pattern' as const },
+  { id: 'marble-fade', label: 'Marble Fade', kind: 'pattern' as const },
+  { id: 'fade', label: 'Fade', kind: 'pattern' as const },
+  { id: 'case-hardened', label: 'Case Hardened', kind: 'pattern' as const },
+  { id: 'tiger-tooth', label: 'Tiger Tooth', kind: 'pattern' as const },
+  { id: 'crimson-web', label: 'Crimson Web', kind: 'pattern' as const },
+  { id: 'slaughter', label: 'Slaughter', kind: 'pattern' as const },
+  { id: 'lore', label: 'Lore', kind: 'pattern' as const },
+  { id: 'damascus-steel', label: 'Damascus Steel', kind: 'pattern' as const },
+  // Eski geriye uyumluluk
   { id: 'doppler-family', label: 'Doppler / Fade', kind: 'style' as const },
 ];
 

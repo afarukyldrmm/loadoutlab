@@ -1,15 +1,21 @@
 // MANUEL RENK DÜZELTMELERİ
 //
-// Python görsel analizi bazı skinler için yanlış sonuç veriyor:
-// - Tahta gövde/kabza yüzünden ana skin rengini kaçırıyor
+// AI vision (Claude Haiku 4.5) bazı skinler için yanlış öncelik veriyor:
+// - Tahta gövde/kabza yüzünden dominant rengi kaçırıyor (eski Python sorunu, AI'da daha az)
 // - Çok küçük vurgu renkleri (Redline'ın ince kırmızı bandı) atlanıyor
 // - Karmaşık desenler (Wild Lotus, Fire Serpent) hatalı sınıflandırılıyor
+// - AI bazen ilk renge yanlış öncelik verir (örn. Water Elemental "red" almış)
 //
 // Bu dosya popüler skinler için DOĞRU renkleri içerir.
-// Sıralama: Python görseli ezilir > Manuel renk düzeltme (BU DOSYA) > Otomatik isim etiketi.
+// Sıralama: Manuel düzeltme (BU DOSYA) > AI görsel analiz > Otomatik isim etiketi.
 //
-// Format: 'Tam skin ismi': ['renk1', 'renk2', ...]
-// Sadece renkleri içermesi yeterli — stiller (cyberpunk, vintage, vs.) Python'dan alınır.
+// FORMAT: 'Tam skin ismi': ['renk1', 'renk2', ...]
+// ⚠️ İLK RENK = DOMINANT. v10 sıkı filtre sadece ilk renge bakar.
+// ⚠️ Bilinçli sıralayın: AK-47 Case Hardened için ['gold', 'blue'] doğru — gold daha baskın.
+//
+// Pattern skinleri (Doppler, Fade, Case Hardened vb.):
+//   - Renk override'ı buraya, pattern tag'i pattern_skins.ts'deki detectPattern'dan otomatik
+//   - Yani Doppler Sapphire ['blue'] yaz, "doppler" tag'i otomatik eklenir
 
 export const MANUAL_COLOR_OVERRIDES: Record<string, string[]> = {
   // ====== AK-47 — kırmızı/turuncu spektrum ======

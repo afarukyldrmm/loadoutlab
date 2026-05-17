@@ -45,7 +45,10 @@ const WEAPON_SUGGESTIONS: Record<string, string[]> = {
 
 export default function LoadoutBuilder({ allSkins }: Props) {
   const [budget, setBudget] = useState(500);
-  const [themeTag, setThemeTag] = useState<string | undefined>(undefined);
+  // v10: çoklu renk + çoklu stil + sıkı/esnek toggle
+  const [themeColors, setThemeColors] = useState<string[]>([]);
+  const [themeStyles, setThemeStyles] = useState<string[]>([]);
+  const [strictColor, setStrictColor] = useState<boolean>(true);
   const [enabledWeapons, setEnabledWeapons] = useState<Set<string>>(
     new Set(DEFAULT_WEAPONS)
   );
@@ -70,12 +73,20 @@ export default function LoadoutBuilder({ allSkins }: Props) {
   const loadout = useMemo(() => {
     return recommendLoadout(allSkins, {
       budget,
-      themeTag,
+      themeColors,
+      themeStyles,
+      strictColor,
+      respectThemeStrictly: true, // v10: silent fallback yok
       enabledWeapons: Array.from(enabledWeapons),
       variationSeed: regenKey,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget, themeTag, enabledWeapons, regenKey, allSkins]);
+  }, [budget, themeColors, themeStyles, strictColor, enabledWeapons, regenKey, allSkins]);
+
+  const unmatchedSet = useMemo(
+    () => new Set(loadout.unmatchedWeapons ?? []),
+    [loadout.unmatchedWeapons]
+  );
 
   const finalItems = useMemo(() => {
     const merged: Record<string, Skin> = { ...loadout.items };
@@ -121,13 +132,28 @@ export default function LoadoutBuilder({ allSkins }: Props) {
   }, [enabledWeapons]);
 
   const remainder = budget - totalPrice;
+  const hasThemeFilter = themeColors.length > 0 || themeStyles.length > 0;
 
   function changeBudget(v: number) {
     setBudget(v);
     setOverrides({});
   }
-  function changeTheme(tag: string | undefined) {
-    setThemeTag(tag);
+  // v10: çoklu renk/stil toggle
+  function toggleColor(id: string) {
+    setThemeColors((cur) =>
+      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
+    );
+    setOverrides({});
+  }
+  function toggleStyle(id: string) {
+    setThemeStyles((cur) =>
+      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
+    );
+    setOverrides({});
+  }
+  function clearTheme() {
+    setThemeColors([]);
+    setThemeStyles([]);
     setOverrides({});
   }
   function regenerate() {
@@ -192,6 +218,16 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     });
     setOverrides({});
   }
+
+  // v10: tema filtresini esnete (sıkı kapatır)
+  function tryLooseTheme() {
+    setStrictColor(false);
+    setOverrides({});
+  }
+
+  const colorChips = THEME_TAGS.filter((t) => t.kind === 'color');
+  const styleChips = THEME_TAGS.filter((t) => t.kind === 'style');
+  const patternChips = THEME_TAGS.filter((t) => t.kind === 'pattern');
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -443,50 +479,114 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           )}
         </div>
 
-        {/* Renk + stil filtreleri */}
+        {/* v10: Renk filtresi — çoklu seçim + sıkı/esnek toggle */}
         <div className="mb-6">
-          <label className="text-sm text-gray-400 mb-2 block">Renk (opsiyonel)</label>
-          <div className="flex gap-2 flex-wrap mb-3">
-            <button
-              onClick={() => changeTheme(undefined)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                !themeTag
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
-              }`}
-            >
-              Hepsi
-            </button>
-            {THEME_TAGS.filter((t) => t.kind === 'color').map((t) => (
-              <button
-                key={t.id}
-                onClick={() => changeTheme(themeTag === t.id ? undefined : t.id)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  themeTag === t.id
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm text-gray-400">
+              Renk (opsiyonel){' '}
+              {themeColors.length > 0 && (
+                <span className="text-orange-400 ml-1">{themeColors.length} seçili</span>
+              )}
+            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={strictColor}
+                  onChange={(e) => {
+                    setStrictColor(e.target.checked);
+                    setOverrides({});
+                  }}
+                  className="w-3.5 h-3.5 accent-orange-500"
+                />
+                Sıkı eşleşme
+              </label>
+              {hasThemeFilter && (
+                <button
+                  onClick={clearTheme}
+                  className="text-xs text-gray-500 hover:text-orange-400 transition-colors"
+                >
+                  Temizle
+                </button>
+              )}
+            </div>
           </div>
-          <label className="text-sm text-gray-400 mb-2 block">Stil (opsiyonel)</label>
-          <div className="flex gap-2 flex-wrap">
-            {THEME_TAGS.filter((t) => t.kind === 'style').map((t) => (
-              <button
-                key={t.id}
-                onClick={() => changeTheme(themeTag === t.id ? undefined : t.id)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  themeTag === t.id
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="flex gap-2 flex-wrap mb-4">
+            {colorChips.map((t) => {
+              const selected = themeColors.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => toggleColor(t.id)}
+                  title={
+                    strictColor
+                      ? `Sadece dominant rengi ${t.label.toLowerCase()} olan skinler`
+                      : `Dominant veya ikincil rengi ${t.label.toLowerCase()} olan skinler`
+                  }
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    selected
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Stil filtresi */}
+          <label className="text-sm text-gray-400 mb-2 block">
+            Stil (opsiyonel)
+          </label>
+          <div className="flex gap-2 flex-wrap mb-4">
+            {styleChips.map((t) => {
+              const selected = themeStyles.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => toggleStyle(t.id)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    selected
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Desen / Pattern filtresi */}
+          {patternChips.length > 0 && (
+            <>
+              <label className="text-sm text-gray-400 mb-2 block">
+                Desen (Pattern, opsiyonel)
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {patternChips.map((t) => {
+                  const selected = themeStyles.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => toggleStyle(t.id)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        selected
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-gray-600 mt-1.5">
+                Pattern skinleri renk filtresinde de dominant renkleriyle görünür.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="flex justify-end">
@@ -520,6 +620,36 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         </div>
       </div>
 
+      {/* v10: tema yüzünden boş kalan slotlar varsa global uyarı */}
+      {unmatchedSet.size > 0 && (
+        <div className="bg-amber-900/20 border border-amber-600/50 rounded-xl p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="text-amber-300 font-semibold text-sm">
+              ⚠️ {unmatchedSet.size} silah için uygun skin bulunamadı
+            </div>
+            <div className="text-xs text-amber-200/80 mt-1">
+              Seçtiğin temada bu silahların renkleri uymuyor. Esnek modu dene, bütçeyi artır veya silahları çıkar.
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {strictColor && (
+              <button
+                onClick={tryLooseTheme}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-md transition-colors"
+              >
+                Esnek modu dene
+              </button>
+            )}
+            <button
+              onClick={clearTheme}
+              className="px-3 py-1.5 bg-[var(--bg-tertiary)] hover:bg-gray-700 text-gray-300 text-xs font-medium rounded-md transition-colors"
+            >
+              Temayı kaldır
+            </button>
+          </div>
+        </div>
+      )}
+
       {activeWeaponList.length === 0 ? (
         <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-8 text-center text-gray-400">
           En az bir silah seç. Yukarıdan oyun tarzı seç veya arama kutusunu kullan.
@@ -528,17 +658,23 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-in">
           {activeWeaponList.map((weaponName) => {
             const skin = finalItems[weaponName];
+            const isThemeUnmatched = unmatchedSet.has(weaponName) && !skin;
             return (
               <WeaponCard
                 key={weaponName}
                 weaponName={weaponName}
                 skin={skin}
                 allSkins={allSkins}
-                themeTag={themeTag}
+                themeColors={themeColors}
+                themeStyles={themeStyles}
+                strictColor={strictColor}
+                isThemeUnmatched={isThemeUnmatched}
                 onSwap={(newSkin) => swapSkin(weaponName, newSkin)}
                 onIncreaseBudget={() => increaseBudgetFor(weaponName)}
                 onReplaceCheaper={() => replaceWithCheaper(weaponName)}
                 onRemove={() => removeWeapon(weaponName)}
+                onTryLooseTheme={tryLooseTheme}
+                onClearTheme={clearTheme}
                 isOverridden={!!overrides[weaponName]}
               />
             );
@@ -553,11 +689,16 @@ interface WeaponCardProps {
   weaponName: string;
   skin?: Skin;
   allSkins: Skin[];
-  themeTag?: string;
+  themeColors: string[];
+  themeStyles: string[];
+  strictColor: boolean;
+  isThemeUnmatched: boolean;
   onSwap: (newSkin: Skin) => void;
   onIncreaseBudget: () => void;
   onReplaceCheaper: () => void;
   onRemove: () => void;
+  onTryLooseTheme: () => void;
+  onClearTheme: () => void;
   isOverridden: boolean;
 }
 
@@ -565,19 +706,73 @@ function WeaponCard({
   weaponName,
   skin,
   allSkins,
-  themeTag,
+  themeColors,
+  themeStyles,
+  strictColor,
+  isThemeUnmatched,
   onSwap,
   onIncreaseBudget,
   onReplaceCheaper,
   onRemove,
+  onTryLooseTheme,
+  onClearTheme,
   isOverridden,
 }: WeaponCardProps) {
   const [showAlts, setShowAlts] = useState(false);
 
   const alternatives = useMemo(() => {
     if (!skin || !showAlts) return [];
-    return findAlternatives(allSkins, skin, { themeTag, maxResults: 8 });
-  }, [allSkins, skin, themeTag, showAlts]);
+    return findAlternatives(allSkins, skin, {
+      themeColors,
+      themeStyles,
+      strictColor,
+      maxResults: 8,
+    });
+  }, [allSkins, skin, themeColors, themeStyles, strictColor, showAlts]);
+
+  // v10: Tema yüzünden boş kalmış slot — tema uyarı kartı
+  if (!skin && isThemeUnmatched) {
+    return (
+      <div className="bg-[var(--bg-secondary)] border border-amber-500/40 rounded-xl p-4 flex flex-col min-h-[260px]">
+        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">
+          {weaponName}
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-4 px-2">
+          <div className="text-3xl mb-2">🎨</div>
+          <div className="text-sm font-semibold text-amber-300 mb-1">
+            Bu temada uygun {weaponName} yok
+          </div>
+          <div className="text-xs text-gray-400">
+            Seçtiğin renk/stil bu silah için eşleşmedi.
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5 mt-3">
+          {strictColor && (
+            <button
+              onClick={onTryLooseTheme}
+              className="w-full bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium py-2 rounded-md transition-colors"
+            >
+              Esnek modu dene
+            </button>
+          )}
+          <button
+            onClick={onClearTheme}
+            className="w-full bg-transparent hover:bg-[var(--bg-tertiary)] text-gray-300 hover:text-white text-xs py-2 rounded-md border border-gray-700 hover:border-gray-600 transition-colors"
+          >
+            Temayı kaldır
+          </button>
+          <button
+            onClick={onRemove}
+            className="w-full bg-transparent hover:text-red-400 text-gray-500 text-[11px] py-1 transition-colors"
+          >
+            Loadout&apos;tan çıkar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Bütçe yetmiyor — uyarı kartı göster
   if (!skin) {
