@@ -130,6 +130,95 @@ export const WEAPONS: WeaponDef[] = [
   { name: 'Hydra Gloves',       slot: 'glove', team: 'shared', weight: 0.11, category: 'glove' },
 ];
 
+// Her silah modelinin en ucuz mevcut fiyatı (Skinport canlı verisinden)
+// Bütçe yetmediğinde "En ucuz X €Y" uyarısında kullanılır
+export const MIN_WEAPON_PRICES: Record<string, number> = {
+  'AK-47': 0.08,
+  'AUG': 0.02,
+  'AWP': 0.13,
+  'Bayonet': 117.37,
+  'Bloodhound Gloves': 77.27,
+  'Bowie Knife': 51.64,
+  'Broken Fang Gloves': 54.64,
+  'Butterfly Knife': 393.88,
+  'CZ75-Auto': 0.02,
+  'Classic Knife': 66.29,
+  'Desert Eagle': 0.03,
+  'Driver Gloves': 35.86,
+  'Dual Berettas': 0.02,
+  'FAMAS': 0.02,
+  'Falchion Knife': 54.68,
+  'Five-SeveN': 0.02,
+  'Flip Knife': 99.61,
+  'G3SG1': 0.02,
+  'Galil AR': 0.02,
+  'Glock-18': 0.06,
+  'Gut Knife': 44.69,
+  'Hand Wraps': 46.17,
+  'Huntsman Knife': 55.19,
+  'Hydra Gloves': 35.04,
+  'Karambit': 338.75,
+  'Kukri Knife': 42.66,
+  'M249': 0.02,
+  'M4A1-S': 0.04,
+  'M4A4': 0.02,
+  'M9 Bayonet': 270.86,
+  'MAC-10': 0.02,
+  'MAG-7': 0.02,
+  'MP5-SD': 0.02,
+  'MP7': 0.02,
+  'MP9': 0.02,
+  'Moto Gloves': 41.09,
+  'Navaja Knife': 41.32,
+  'Negev': 0.02,
+  'Nomad Knife': 80.96,
+  'Nova': 0.02,
+  'P2000': 0.03,
+  'P250': 0.02,
+  'P90': 0.02,
+  'PP-Bizon': 0.02,
+  'Paracord Knife': 43.69,
+  'R8 Revolver': 0.02,
+  'SCAR-20': 0.02,
+  'SG 553': 0.02,
+  'SSG 08': 0.02,
+  'Sawed-Off': 0.02,
+  'Shadow Daggers': 39.74,
+  'Skeleton Knife': 112.00,
+  'Specialist Gloves': 54.95,
+  'Sport Gloves': 95.33,
+  'Stiletto Knife': 109.94,
+  'Survival Knife': 40.58,
+  'Talon Knife': 187.70,
+  'Tec-9': 0.02,
+  'UMP-45': 0.02,
+  'USP-S': 0.05,
+  'Ursus Knife': 56.31,
+  'XM1014': 0.02,
+};
+
+/**
+ * Bir silah için aynı kategoride daha ucuz bir alternatif bulur.
+ * "Karambit pahalı → Navaja Knife önersin" gibi.
+ */
+export function findCheaperAlternative(weaponName: string): string | null {
+  const def = WEAPON_BY_NAME[weaponName];
+  if (!def) return null;
+  const currentMin = MIN_WEAPON_PRICES[weaponName] ?? 0;
+
+  // Aynı kategoride daha ucuz olanları bul
+  const cheaper = WEAPONS
+    .filter((w) => w.category === def.category && w.name !== weaponName)
+    .map((w) => ({
+      name: w.name,
+      min: MIN_WEAPON_PRICES[w.name] ?? 0,
+    }))
+    .filter((w) => w.min < currentMin && w.min > 0.5) // çok ucuz olanları ele (spam)
+    .sort((a, b) => b.min - a.min); // en pahalı ucuz olanı seç (en iyi kalite)
+
+  return cheaper[0]?.name ?? null;
+}
+
 export const WEAPON_CATEGORIES: { id: WeaponCategory; label: string }[] = [
   { id: 'rifle', label: 'Tüfekler' },
   { id: 'sniper', label: 'Sniper' },

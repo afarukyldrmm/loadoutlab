@@ -9,6 +9,8 @@ import {
   WEAPON_BY_NAME,
   WEAPON_CATEGORIES,
   LOADOUT_PRESETS,
+  MIN_WEAPON_PRICES,
+  findCheaperAlternative,
   recommendLoadout,
   affiliateUrl,
   findAlternatives,
@@ -160,6 +162,35 @@ export default function LoadoutBuilder({ allSkins }: Props) {
   }
   function swapSkin(weaponName: string, newSkin: Skin) {
     setOverrides((o) => ({ ...o, [weaponName]: newSkin }));
+  }
+
+  // Bütçeyi gerekli kadar artır
+  function increaseBudgetFor(weaponName: string) {
+    const minPrice = MIN_WEAPON_PRICES[weaponName] ?? 0;
+    // Bu silah için ihtiyaç: min fiyat * 1.2 (biraz pay olsun)
+    // Toplam ağırlığa göre gerekli bütçeyi hesapla
+    const weight = WEAPON_BY_NAME[weaponName]?.weight ?? 0.1;
+    const totalWeight = Array.from(enabledWeapons).reduce(
+      (sum, w) => sum + (WEAPON_BY_NAME[w]?.weight ?? 0),
+      0
+    );
+    const requiredBudget = Math.ceil((minPrice * 1.2 * totalWeight) / weight);
+    const newBudget = Math.max(budget, requiredBudget);
+    setBudget(newBudget);
+    setOverrides({});
+  }
+
+  // Bir silahı daha ucuz alternatifle değiştir
+  function replaceWithCheaper(weaponName: string) {
+    const alternative = findCheaperAlternative(weaponName);
+    if (!alternative) return;
+    setEnabledWeapons((prev) => {
+      const next = new Set(prev);
+      next.delete(weaponName);
+      next.add(alternative);
+      return next;
+    });
+    setOverrides({});
   }
 
   return (
@@ -505,6 +536,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 allSkins={allSkins}
                 themeTag={themeTag}
                 onSwap={(newSkin) => swapSkin(weaponName, newSkin)}
+                onIncreaseBudget={() => increaseBudgetFor(weaponName)}
+                onReplaceCheaper={() => replaceWithCheaper(weaponName)}
+                onRemove={() => removeWeapon(weaponName)}
                 isOverridden={!!overrides[weaponName]}
               />
             );
@@ -521,6 +555,9 @@ interface WeaponCardProps {
   allSkins: Skin[];
   themeTag?: string;
   onSwap: (newSkin: Skin) => void;
+  onIncreaseBudget: () => void;
+  onReplaceCheaper: () => void;
+  onRemove: () => void;
   isOverridden: boolean;
 }
 
@@ -530,6 +567,9 @@ function WeaponCard({
   allSkins,
   themeTag,
   onSwap,
+  onIncreaseBudget,
+  onReplaceCheaper,
+  onRemove,
   isOverridden,
 }: WeaponCardProps) {
   const [showAlts, setShowAlts] = useState(false);
@@ -539,11 +579,52 @@ function WeaponCard({
     return findAlternatives(allSkins, skin, { themeTag, maxResults: 8 });
   }, [allSkins, skin, themeTag, showAlts]);
 
+  // Bütçe yetmiyor — uyarı kartı göster
   if (!skin) {
+    const minPrice = MIN_WEAPON_PRICES[weaponName] ?? 0;
+    const cheaperAlt = findCheaperAlternative(weaponName);
+
     return (
-      <div className="bg-[var(--bg-secondary)] border border-dashed border-gray-700 rounded-xl p-4 flex flex-col items-center justify-center text-gray-500 min-h-[260px]">
-        <div className="text-xs uppercase tracking-wider mb-1">{weaponName}</div>
-        <div className="text-sm">Uygun skin yok</div>
+      <div className="bg-[var(--bg-secondary)] border border-orange-500/40 rounded-xl p-4 flex flex-col min-h-[260px]">
+        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">
+          {weaponName}
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-4 px-2">
+          <div className="text-3xl mb-2">⚠️</div>
+          <div className="text-sm font-semibold text-gray-200 mb-1">
+            Bütçe yetmiyor
+          </div>
+          <div className="text-xs text-gray-400">
+            En ucuz {weaponName}{' '}
+            <span className="text-orange-500 font-semibold">
+              {minPrice.toFixed(0)}€
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5 mt-3">
+          <button
+            onClick={onIncreaseBudget}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium py-2 rounded-md transition-colors"
+          >
+            Bütçeye sığdır
+          </button>
+          {cheaperAlt && (
+            <button
+              onClick={onReplaceCheaper}
+              className="w-full bg-transparent hover:bg-[var(--bg-tertiary)] text-gray-300 hover:text-white text-xs py-2 rounded-md border border-gray-700 hover:border-gray-600 transition-colors"
+            >
+              Daha ucuz: {cheaperAlt}
+            </button>
+          )}
+          <button
+            onClick={onRemove}
+            className="w-full bg-transparent hover:text-red-400 text-gray-500 text-[11px] py-1 transition-colors"
+          >
+            Loadout&apos;tan çıkar
+          </button>
+        </div>
       </div>
     );
   }
