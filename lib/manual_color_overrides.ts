@@ -58,7 +58,7 @@ export const MANUAL_COLOR_OVERRIDES: Record<string, string[]> = {
   'AK-47 | Steel Delta': ['black'],
   'AK-47 | Gold Arabesque': ['gold', 'black'],
   'AK-47 | Legion of Anubis': ['gold', 'black'],
-  'AK-47 | Case Hardened': ['blue', 'gold'],
+  'AK-47 | Case Hardened': ['gold', 'blue'],
 
   // AK-47 — turuncu
   'AK-47 | Asiimov': ['orange', 'white', 'black'],

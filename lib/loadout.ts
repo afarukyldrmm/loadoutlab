@@ -373,20 +373,30 @@ export function getEffectiveTags(skin: Skin): string[] {
 
 /**
  * Bir skin verilen tema/renk filtresine uyuyor mu?
- * Renk filtresinde "komşu" renkleri de eşleştirir (daha hoşgörülü).
- * Stil filtresinde tam eşleşme bekler.
+ *
+ * RENK eşleştirmesi: SIKI ve DOMINANT bazlı.
+ * - AI ilk verdiği renkleri en baskın olarak veriyor (Vulcan → ['blue','white','black'])
+ * - Biz sadece ilk 2 renge bakıyoruz — "biraz mavi var" yerine "baskın renklerden biri mavi"
+ * - Komşu renk kabul yok: mavi seçilince sadece mavi gelir, mor gelmez
+ *
+ * STIL eşleştirmesi: Tam eşleşme (cyberpunk, vintage, doppler-family vs.)
  */
 export function matchesThemeTag(skin: Skin, themeTag: string): boolean {
   const tags = getEffectiveTags(skin);
 
-  // Stil filtresi (cyberpunk, vintage, vs.) — tam eşleşme
+  // Stil filtresi — tam eşleşme
   if (!COLOR_TAGS.includes(themeTag)) {
     return tags.includes(themeTag);
   }
 
-  // Renk filtresi — kendisi VEYA komşu rengi içermeli
-  const neighbors = COLOR_NEIGHBORS[themeTag] || [themeTag];
-  return tags.some((t) => neighbors.includes(t));
+  // Renk filtresi — SADECE İLK RENK dominant kabul edilir
+  // En sıkı eşleşme. Hem manuel override hem AI verisinde aynı kural.
+  // Vulcan: ['blue','white'] → ilk 'blue' → mavi filtresi geçer ✓
+  // Case Hardened: ['gold','blue'] → ilk 'gold' → mavi filtresinde GELMEZ ✓
+  // Violet Beadwork: ['purple','blue',...] → ilk 'purple' → mavi filtresinde GELMEZ ✓
+  const colorsOnly = tags.filter((t) => COLOR_TAGS.includes(t));
+  if (colorsOnly.length === 0) return false;
+  return colorsOnly[0] === themeTag;
 }
 
 // ============================================================
