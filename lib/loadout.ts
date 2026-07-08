@@ -307,7 +307,7 @@ export const SLOT_LABELS: Record<Slot, string> = {
 
 import { MANUAL_TAGS } from './manual_tags';
 import { MANUAL_COLOR_OVERRIDES } from './manual_color_overrides';
-import { detectPattern } from './pattern_skins';
+import { detectPattern, PATTERN_COLOR_DEFAULTS } from './pattern_skins';
 
 let VISUAL_COLOR_TAGS: Record<string, string[]> = {};
 try {
@@ -342,23 +342,29 @@ export const COLOR_NEIGHBORS: Record<string, string[]> = {
 
 /**
  * Bir skin için doğru renk/stil etiketleri.
- * Öncelik sırası:
+ * Öncelik sırası (v11):
  *  1. MANUEL düzeltmeler (en güvenilir, elle kontrol edildi)
- *  2. GÖRSEL analiz (Python K-means)
- *  3. OTOMATİK isim etiketi (fallback)
+ *  2. PATTERN sabit renkleri (Doppler, Case Hardened vb. — kural bazlı,
+ *     AI'dan güvenilir çünkü pattern görselleri oyunda sabittir)
+ *  3. GÖRSEL analiz (AI vision)
+ *  4. OTOMATİK isim etiketi (fallback)
  *
  * Stil etiketleri (cyberpunk, vintage, vs.) tüm kaynaklardan birleştirilir.
  */
 export function getEffectiveTags(skin: Skin): string[] {
   const override = MANUAL_COLOR_OVERRIDES[skin.name];
+  const patternType = detectPattern(skin.name);
+  const patternColors = patternType ? PATTERN_COLOR_DEFAULTS[patternType] : undefined;
   const visual = VISUAL_COLOR_TAGS[skin.name];
   const manual = MANUAL_TAGS[skin.name];
   const auto = skin.tags;
 
-  // Renk seçimi: manuel override > visual > manuel (eski) > auto
+  // Renk seçimi: manuel override > pattern default > visual > manuel (eski) > auto
   let chosenColors: string[] = [];
   if (override && override.length > 0) {
     chosenColors = override.filter((t) => COLOR_TAGS.includes(t));
+  } else if (patternColors && patternColors.length > 0) {
+    chosenColors = patternColors.filter((t) => COLOR_TAGS.includes(t));
   } else if (visual && visual.length > 0) {
     chosenColors = visual.filter((t) => COLOR_TAGS.includes(t));
   } else if (manual) {
@@ -443,6 +449,16 @@ export function matchesThemeTag(skin: Skin, themeTag: string): boolean {
   return matchesThemeFilter(skin, [], [themeTag], true);
 }
 
+/**
+ * v11: Kademeli renk eşleşme modu.
+ * - true  → her zaman sıkı (sadece ilk renk)
+ * - false → her zaman esnek (ilk 2 renk + komşu renkler)
+ * - 'auto' → önce sıkı dene; o silah/slot için sonuç yoksa esneğe düş.
+ *   "Çok az sonuç" ve "yanlış sonuç" ikilemini çözer: tam eşleşme varken
+ *   asla yakın ton gösterilmez, yoksa slot boş kalmak yerine yakın ton gelir.
+ */
+export type ColorMatchMode = boolean | 'auto';
+
 // ============================================================
 // ÖNERİ ALGORİTMASI (artık weapon bazlı)
 // ============================================================
@@ -455,8 +471,11 @@ export interface RecommendOptions {
   themeColors?: string[];
   /** v10: çoklu stil/desen seçimi — boş array = stil filtresi yok */
   themeStyles?: string[];
-  /** v10: sıkı (sadece ilk renk) vs esnek (ilk 2 + komşular). Default true. */
-  strictColor?: boolean;
+  /**
+   * v11: renk eşleşme modu. Default 'auto' — önce sıkı, sonuç yoksa esnek.
+   * true = her zaman sıkı, false = her zaman esnek.
+   */
+  strictColor?: ColorMatchMode;
   /**
    * v10: Tema filtresi seçildiğinde uyumlu skin yoksa fallback yapılsın mı?
    * - true (default): Slot boş kalır, UI uyarı kartı gösterir. KESİN davranış.
@@ -474,6 +493,11 @@ export interface Loadout {
    * UI uyarı kartı göstermek için: "Bu temada uygun {weapon} yok"
    */
   unmatchedWeapons?: string[];
+  /**
+   * v11: Tam renk eşleşmesi bulunamayıp yakın tonla (esnek mod) doldurulan
+   * silahlar. UI "yakın ton" rozeti göstermek için kullanabilir.
+   */
+  relaxedWeapons?: string[];
   totalPrice: number;
   budget: number;
   themeTag?: string;
@@ -490,7 +514,7 @@ export function recommendLoadout(
     themeTag,
     themeColors = [],
     themeStyles = [],
-    strictColor = true,
+    strictColor = 'auto',
     respectThemeStrictly = true,
     enabledWeapons,
     variationSeed = 0,
@@ -538,6 +562,7 @@ export function recommendLoadout(
 
   const items: Record<string, Skin> = {};
   const unmatchedWeapons: string[] = [];
+  const relaxedWeapons: string[] = [];
   let totalSpent = 0;
 
   // Önem sırasına göre işle (önemli silahlar önce, kalan bütçe önemsizler için)
@@ -545,18 +570,40 @@ export function recommendLoadout(
     (a, b) => WEAPON_BY_NAME[b].weight - WEAPON_BY_NAME[a].weight
   );
 
-  const candidatesFor = (weaponName: string, applyTheme: boolean): Skin[] => {
+  const candidatesFor = (
+    weaponName: string,
+    applyTheme: boolean,
+    strict: boolean = true,
+  ): Skin[] => {
     return allSkins.filter((s) => {
       if (s.weapon !== weaponName) return false;
       if (
         applyTheme &&
         hasThemeFilter &&
-        !matchesThemeFilter(s, activeColors, activeStyles, strictColor)
+        !matchesThemeFilter(s, activeColors, activeStyles, strict)
       ) {
         return false;
       }
       return true;
     });
+  };
+
+  // v11: Deneme sırası (kademeli gevşetme).
+  // 'auto' → önce sıkı, sonuç yoksa esnek. true/false → tek mod.
+  // respectThemeStrictly=false ise en sona temasız deneme de eklenir (v9 davranışı).
+  type Attempt = { useTheme: boolean; strict: boolean };
+  const buildAttempts = (): Attempt[] => {
+    if (!hasThemeFilter) return [{ useTheme: false, strict: true }];
+    const themed: Attempt[] =
+      strictColor === 'auto'
+        ? [
+            { useTheme: true, strict: true },
+            { useTheme: true, strict: false },
+          ]
+        : [{ useTheme: true, strict: strictColor }];
+    return respectThemeStrictly
+      ? themed
+      : [...themed, { useTheme: false, strict: true }];
   };
 
   for (const weaponName of weaponsByImportance) {
@@ -572,17 +619,14 @@ export function recommendLoadout(
 
     let pick: Skin | undefined;
     let pickedWithTheme = false;
+    let pickedRelaxed = false;
 
-    // v10: Tema sıkı modda (default) → sadece tema ile dene; yoksa fallback YAPMA.
-    // Eski v9 davranışı için respectThemeStrictly=false geçilebilir.
-    const themeAttempts: boolean[] = hasThemeFilter
-      ? (respectThemeStrictly ? [true] : [true, false])
-      : [false];
-
-    for (const useTheme of themeAttempts) {
-      const candidates = candidatesFor(weaponName, useTheme).filter(
-        (c) => c.entry_price <= maxAllowed
-      );
+    for (const attempt of buildAttempts()) {
+      const candidates = candidatesFor(
+        weaponName,
+        attempt.useTheme,
+        attempt.strict,
+      ).filter((c) => c.entry_price <= maxAllowed);
       if (candidates.length === 0) continue;
 
       // Sweet spot: target'ın %50-100'ü arasındaki en popüler skin
@@ -600,13 +644,15 @@ export function recommendLoadout(
         const sorted = candidates.sort((a, b) => b.entry_price - a.entry_price);
         pick = sorted[Math.floor(rand() * Math.min(2, sorted.length))];
       }
-      pickedWithTheme = useTheme;
+      pickedWithTheme = attempt.useTheme;
+      pickedRelaxed = attempt.useTheme && !attempt.strict && strictColor === 'auto';
       break;
     }
 
     if (pick) {
       items[weaponName] = pick;
       totalSpent += pick.entry_price;
+      if (pickedRelaxed) relaxedWeapons.push(weaponName);
     } else if (hasThemeFilter) {
       // Tema seçili ama uygun skin yok → slot boş, uyarı listesine ekle
       unmatchedWeapons.push(weaponName);
@@ -622,13 +668,15 @@ export function recommendLoadout(
       if (!current) continue;
       const upgradeBudget = current.entry_price + headroom;
 
-      // v10: upgrade pass de tema sıkı kuralına uyar
-      const upgradeAttempts: boolean[] = hasThemeFilter
-        ? (respectThemeStrictly ? [true] : [true, false])
-        : [false];
-
-      for (const useTheme of upgradeAttempts) {
-        const better = candidatesFor(weaponName, useTheme)
+      // v11: upgrade pass de kademeli kurala uyar (önce sıkı, sonra esnek).
+      // Ama tam renkle seçilmiş bir skin, yakın tonluyla DEĞİŞTİRİLMEZ —
+      // esnek upgrade sadece zaten esnek seçilmiş silahlarda denenir.
+      const upgradeAttempts = buildAttempts().filter(
+        (a) =>
+          !a.useTheme || a.strict || relaxedWeapons.includes(weaponName),
+      );
+      for (const attempt of upgradeAttempts) {
+        const better = candidatesFor(weaponName, attempt.useTheme, attempt.strict)
           .filter(
             (s) =>
               s.entry_price > current.entry_price &&
@@ -650,6 +698,7 @@ export function recommendLoadout(
   return {
     items,
     unmatchedWeapons: unmatchedWeapons.length > 0 ? unmatchedWeapons : undefined,
+    relaxedWeapons: relaxedWeapons.length > 0 ? relaxedWeapons : undefined,
     totalPrice: totalSpent,
     budget,
     themeTag,
@@ -674,7 +723,7 @@ export function findAlternatives(
     themeTag?: string;
     themeColors?: string[];
     themeStyles?: string[];
-    strictColor?: boolean;
+    strictColor?: ColorMatchMode;
     maxResults?: number;
     priceTolerancePct?: number;
   } = {}
@@ -683,7 +732,7 @@ export function findAlternatives(
     themeTag,
     themeColors = [],
     themeStyles = [],
-    strictColor = true,
+    strictColor = 'auto',
     maxResults = 8,
     priceTolerancePct = 0.5,
   } = options;
@@ -702,29 +751,48 @@ export function findAlternatives(
   const upper = targetPrice * (1 + priceTolerancePct);
 
   // Alternatifler: AYNI WEAPON modelinden, farklı skin
-  const candidates = allSkins.filter((s) => {
+  const baseCandidates = allSkins.filter((s) => {
     if (s.weapon !== currentSkin.weapon) return false;
     if (s.id === currentSkin.id) return false;
     if (s.entry_price < lower * 0.3) return false;
     if (s.entry_price > upper * 2) return false;
-    if (
-      hasThemeFilter &&
-      !matchesThemeFilter(s, activeColors, activeStyles, strictColor)
-    ) {
-      return false;
-    }
     return true;
   });
 
-  const scored = candidates.map((s) => {
+  const score = (s: Skin): number => {
     const priceDiff = Math.abs(s.entry_price - targetPrice) / targetPrice;
     const popularity = sumQuantity(s);
-    const score = -priceDiff * 2 + Math.log10(popularity + 1) * 0.5;
-    return { skin: s, score };
-  });
+    return -priceDiff * 2 + Math.log10(popularity + 1) * 0.5;
+  };
+  const rank = (list: Skin[]) =>
+    [...list].sort((a, b) => score(b) - score(a));
 
-  scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, maxResults).map((x) => x.skin);
+  if (!hasThemeFilter) {
+    return rank(baseCandidates).slice(0, maxResults);
+  }
+
+  // v11: kademeli — önce tam eşleşenler, liste dolmazsa yakın tonlarla tamamla
+  if (strictColor === 'auto') {
+    const strictMatches = baseCandidates.filter((s) =>
+      matchesThemeFilter(s, activeColors, activeStyles, true),
+    );
+    const results = rank(strictMatches).slice(0, maxResults);
+    if (results.length < maxResults) {
+      const strictIds = new Set(results.map((s) => s.id));
+      const relaxedOnly = baseCandidates.filter(
+        (s) =>
+          !strictIds.has(s.id) &&
+          matchesThemeFilter(s, activeColors, activeStyles, false),
+      );
+      results.push(...rank(relaxedOnly).slice(0, maxResults - results.length));
+    }
+    return results;
+  }
+
+  const matches = baseCandidates.filter((s) =>
+    matchesThemeFilter(s, activeColors, activeStyles, strictColor),
+  );
+  return rank(matches).slice(0, maxResults);
 }
 
 // ============================================================
@@ -789,3 +857,95 @@ export const RARITY_COLORS: Record<string, string> = {
   'Contraband': 'text-rarity-contraband',
   'Extraordinary': 'text-rarity-covert',
 };
+
+// ============================================================
+// v11: SLOT GALERİSİ + KOLEKSİYON (AİLE) DESTEĞİ
+// ============================================================
+
+/**
+ * Bir skin'in "tasarım adı" — '|' işaretinden sonraki kısım.
+ * Aynı tasarım adına sahip skinler aynı aileye / koleksiyona aittir.
+ * Örn: 'AWP | Printstream' + 'USP-S | Printstream' → 'Printstream'
+ */
+export function getSkinFamily(skin: Skin): string | null {
+  const i = skin.name.indexOf('|');
+  if (i === -1) return null;
+  return skin.name.slice(i + 1).trim();
+}
+
+export interface FamilyInfo {
+  family: string;
+  weaponCount: number;
+  skinCount: number;
+  minPrice: number;
+}
+
+/**
+ * Veri kümesinden, birden fazla silaha yayılan skin ailelerini çıkarır.
+ * UI'daki "Koleksiyon" bölümü bu listeyi kullanır.
+ */
+export function listSkinFamilies(allSkins: Skin[], minWeapons = 4): FamilyInfo[] {
+  const weapons = new Map<string, Set<string>>();
+  const counts = new Map<string, number>();
+  const minPrice = new Map<string, number>();
+  for (const s of allSkins) {
+    const f = getSkinFamily(s);
+    if (!f) continue;
+    if (!weapons.has(f)) weapons.set(f, new Set());
+    weapons.get(f)!.add(s.weapon);
+    counts.set(f, (counts.get(f) ?? 0) + 1);
+    minPrice.set(f, Math.min(minPrice.get(f) ?? Infinity, s.entry_price));
+  }
+  return Array.from(weapons.entries())
+    .filter(([, w]) => w.size >= minWeapons)
+    .map(([family, w]) => ({
+      family,
+      weaponCount: w.size,
+      skinCount: counts.get(family) ?? 0,
+      minPrice: minPrice.get(family) ?? 0,
+    }))
+    .sort((a, b) => b.weaponCount - a.weaponCount);
+}
+
+/**
+ * Bir aileye ait tüm skinler — silah önemine ve fiyata göre sıralı.
+ * "Koleksiyon modu" bütçe/filtre bağımsız bu listeyi gösterir.
+ */
+export function skinsInFamily(allSkins: Skin[], family: string): Skin[] {
+  return allSkins
+    .filter((s) => getSkinFamily(s) === family)
+    .sort((a, b) => {
+      const wa = WEAPON_BY_NAME[a.weapon]?.weight ?? 0;
+      const wb = WEAPON_BY_NAME[b.weapon]?.weight ?? 0;
+      if (wb !== wa) return wb - wa;
+      return a.entry_price - b.entry_price;
+    });
+}
+
+/**
+ * Bir slot (knife / glove vb.) için tema-uyumlu skinleri döndürür.
+ * Bıçak/eldiven kart-içi galerisi bunu kullanır — tüm modeller dahil.
+ *
+ * v11 kademeli: önce TAM eşleşenler (fiyata göre artan), galeri boş kalırsa
+ * ardından yakın tonlar (COLOR_NEIGHBORS, fiyata göre artan) eklenir.
+ * Böylece tam eşleşme varken yanlış renk gösterilmez, ama galeri de boş kalmaz.
+ */
+export function themeMatchingSkins(
+  allSkins: Skin[],
+  slot: Slot,
+  colors: string[],
+): Skin[] {
+  const inSlot = allSkins.filter((s) => s.slot === slot);
+  const byPrice = (a: Skin, b: Skin) => a.entry_price - b.entry_price;
+
+  if (colors.length === 0) return [...inSlot].sort(byPrice);
+
+  const strictMatches = inSlot
+    .filter((s) => matchesThemeFilter(s, colors, [], true))
+    .sort(byPrice);
+  if (strictMatches.length > 0) return strictMatches;
+
+  return inSlot
+    .filter((s) => matchesThemeFilter(s, colors, [], false))
+    .sort(byPrice);
+}

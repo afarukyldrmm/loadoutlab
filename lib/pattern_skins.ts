@@ -62,6 +62,41 @@ export const PATTERN_LABELS: Record<PatternType, string> = {
 };
 
 /**
+ * v11: Pattern ailelerinin BİLİNEN sabit renkleri (ilk renk = dominant).
+ *
+ * AI görsel analizi pattern skinlerde tutarsız (aynı pattern farklı bıçaklarda
+ * farklı ilk renk alıyor). Oyun içi pattern görselleri sabittir, o yüzden
+ * kural bazlı renk ataması AI'dan daha güvenilir.
+ *
+ * Öncelik sırası (getEffectiveTags): manuel override > PATTERN_COLOR_DEFAULTS > AI.
+ * Yani AK-47 Case Hardened gibi istisnalar manuel override'da kalabilir.
+ */
+export const PATTERN_COLOR_DEFAULTS: Record<PatternType, string[]> = {
+  'doppler': ['purple', 'blue', 'pink'],       // P1-P4 mor/mavi ağırlıklı
+  'gamma-doppler': ['green', 'blue'],           // zümrüt yeşili fazlar
+  'fade': ['pink', 'purple', 'yellow'],         // pembe→mor→sarı gradient
+  'marble-fade': ['red', 'blue', 'yellow'],     // fire & ice
+  'case-hardened': ['blue', 'gold'],            // mavi vurgu + altın metalik
+  'tiger-tooth': ['gold', 'yellow'],
+  'crimson-web': ['red', 'black'],
+  'slaughter': ['red'],
+  'lore': ['green', 'gold'],
+  'damascus-steel': ['gray', 'black'],
+  'autotronic': ['red', 'gray', 'black'],
+  'freehand': ['blue', 'white'],
+  'bright-water': ['blue', 'green'],
+  'safari-mesh': ['brown', 'green'],
+  'rust-coat': ['brown', 'orange'],
+  'forest-ddpat': ['green', 'brown'],
+  'urban-masked': ['gray', 'black'],
+  'blue-steel': ['blue', 'gray'],
+  'stained': ['gray', 'brown'],
+  'night': ['black', 'blue'],
+  'boreal-forest': ['green', 'brown'],
+  'scorched': ['brown', 'gray', 'black'],
+};
+
+/**
  * Skin adından pattern tipini tespit eder.
  * Adda pattern kelimesi geçiyorsa o pattern tipini döner.
  * Sıralama önemli: "Gamma Doppler" "Doppler"'dan önce, "Marble Fade" "Fade"'den önce.

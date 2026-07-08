@@ -8,12 +8,14 @@ import {
   WEAPONS,
   WEAPON_BY_NAME,
   WEAPON_CATEGORIES,
-  LOADOUT_PRESETS,
   MIN_WEAPON_PRICES,
   findCheaperAlternative,
   recommendLoadout,
   affiliateUrl,
   findAlternatives,
+  listSkinFamilies,
+  skinsInFamily,
+  themeMatchingSkins,
 } from '@/lib/loadout';
 
 interface Props {
@@ -28,38 +30,63 @@ const BUDGET_PRESETS = [
   { label: '5.000€', value: 5000 },
 ];
 
-const DEFAULT_WEAPONS = LOADOUT_PRESETS.find((p) => p.id === 'classic')!.weapons;
+// Başlangıç silahları — bıçak/eldiven ayrı toggle'larla yönetilir
+const DEFAULT_GUNS = ['AK-47', 'M4A4', 'AWP', 'Desert Eagle'];
 
-// Akıllı öneriler: hangi silahla birlikte sık seçilir
+// Sadece silah kategorileri (bıçak/eldiven hariç — ayrı bölümde)
+const GUN_CATEGORIES = WEAPON_CATEGORIES.filter(
+  (c) => c.id !== 'knife' && c.id !== 'glove'
+);
+const GUN_CATEGORY_IDS = new Set(GUN_CATEGORIES.map((c) => c.id));
+
+// Akıllı öneriler — hangi silahla birlikte sık seçilir
 const WEAPON_SUGGESTIONS: Record<string, string[]> = {
-  'AK-47': ['M4A4', 'M4A1-S', 'AWP', 'Desert Eagle', 'Karambit', 'Sport Gloves'],
-  'M4A4': ['AK-47', 'AWP', 'Desert Eagle', 'USP-S', 'Karambit'],
-  'M4A1-S': ['AK-47', 'AWP', 'USP-S', 'Desert Eagle', 'Karambit'],
-  'AWP': ['AK-47', 'Desert Eagle', 'USP-S', 'Glock-18', 'Karambit'],
-  'Desert Eagle': ['AK-47', 'M4A4', 'AWP', 'Karambit'],
+  'AK-47': ['M4A4', 'M4A1-S', 'AWP', 'Desert Eagle'],
+  'M4A4': ['AK-47', 'AWP', 'Desert Eagle', 'USP-S'],
+  'M4A1-S': ['AK-47', 'AWP', 'USP-S', 'Desert Eagle'],
+  'AWP': ['AK-47', 'Desert Eagle', 'USP-S', 'Glock-18'],
+  'Desert Eagle': ['AK-47', 'M4A4', 'AWP', 'Glock-18'],
   'Glock-18': ['AK-47', 'AWP', 'Desert Eagle', 'MAC-10'],
-  'USP-S': ['M4A1-S', 'M4A4', 'AWP', 'Desert Eagle', 'MP9'],
-  'Karambit': ['AK-47', 'M4A4', 'AWP', 'Sport Gloves'],
-  'Sport Gloves': ['Karambit', 'Butterfly Knife', 'AK-47'],
+  'USP-S': ['M4A1-S', 'M4A4', 'AWP', 'Desert Eagle'],
+};
+
+const COLOR_CHIPS = THEME_TAGS.filter((t) => t.kind === 'color');
+
+// Renk chip'i için küçük renk noktası
+const COLOR_SWATCH: Record<string, string> = {
+  red: '#ef4444',
+  blue: '#3b82f6',
+  green: '#22c55e',
+  purple: '#a855f7',
+  gold: '#eab308',
+  pink: '#ec4899',
+  orange: '#f97316',
+  yellow: '#facc15',
+  brown: '#92400e',
+  gray: '#9ca3af',
+  black: '#1f2937',
+  white: '#f3f4f6',
 };
 
 export default function LoadoutBuilder({ allSkins }: Props) {
   const [budget, setBudget] = useState(500);
-  // v10: çoklu renk + çoklu stil + sıkı/esnek toggle
   const [themeColors, setThemeColors] = useState<string[]>([]);
-  const [themeStyles, setThemeStyles] = useState<string[]>([]);
-  const [strictColor, setStrictColor] = useState<boolean>(true);
-  const [enabledWeapons, setEnabledWeapons] = useState<Set<string>>(
-    new Set(DEFAULT_WEAPONS)
+  const [enabledGuns, setEnabledGuns] = useState<Set<string>>(
+    new Set(DEFAULT_GUNS)
   );
+  const [includeKnife, setIncludeKnife] = useState(true);
+  const [includeGlove, setIncludeGlove] = useState(true);
+  const [knifePick, setKnifePick] = useState<Skin | null>(null);
+  const [glovePick, setGlovePick] = useState<Skin | null>(null);
+  const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
+  const [familyQuery, setFamilyQuery] = useState('');
   const [regenKey, setRegenKey] = useState(0);
-  const [overrides, setOverrides] = useState<Record<string, Skin>>({});
+  const [gunOverrides, setGunOverrides] = useState<Record<string, Skin>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [showAllWeapons, setShowAllWeapons] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Click outside to close search
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -70,167 +97,206 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // --- Silah loadout'u (v11: kademeli renk — önce tam eşleşme, yoksa yakın ton) ---
   const loadout = useMemo(() => {
     return recommendLoadout(allSkins, {
       budget,
       themeColors,
-      themeStyles,
-      strictColor,
-      respectThemeStrictly: true, // v10: silent fallback yok
-      enabledWeapons: Array.from(enabledWeapons),
+      themeStyles: [],
+      strictColor: 'auto',
+      respectThemeStrictly: true,
+      enabledWeapons: Array.from(enabledGuns),
       variationSeed: regenKey,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget, themeColors, themeStyles, strictColor, enabledWeapons, regenKey, allSkins]);
+  }, [budget, themeColors, enabledGuns, regenKey, allSkins]);
 
   const unmatchedSet = useMemo(
     () => new Set(loadout.unmatchedWeapons ?? []),
     [loadout.unmatchedWeapons]
   );
 
-  const finalItems = useMemo(() => {
+  const relaxedSet = useMemo(
+    () => new Set(loadout.relaxedWeapons ?? []),
+    [loadout.relaxedWeapons]
+  );
+
+  const gunItems = useMemo(() => {
     const merged: Record<string, Skin> = { ...loadout.items };
-    for (const [weaponName, skin] of Object.entries(overrides)) {
-      if (skin && enabledWeapons.has(weaponName)) merged[weaponName] = skin;
+    for (const [weaponName, skin] of Object.entries(gunOverrides)) {
+      if (skin && enabledGuns.has(weaponName)) merged[weaponName] = skin;
     }
     return merged;
-  }, [loadout, overrides, enabledWeapons]);
+  }, [loadout, gunOverrides, enabledGuns]);
 
-  const totalPrice = useMemo(() => {
-    return Object.values(finalItems).reduce(
-      (sum, s) => sum + (s?.entry_price ?? 0),
-      0
-    );
-  }, [finalItems]);
+  // --- Bıçak & eldiven galerileri (tüm modeller, renk filtreli) ---
+  const knifeOptions = useMemo(
+    () => themeMatchingSkins(allSkins, 'knife', themeColors),
+    [allSkins, themeColors]
+  );
+  const gloveOptions = useMemo(
+    () => themeMatchingSkins(allSkins, 'glove', themeColors),
+    [allSkins, themeColors]
+  );
+  const effectiveKnife = useMemo(() => {
+    if (knifePick && knifeOptions.some((s) => s.id === knifePick.id))
+      return knifePick;
+    return knifeOptions[0];
+  }, [knifePick, knifeOptions]);
+  const effectiveGlove = useMemo(() => {
+    if (glovePick && gloveOptions.some((s) => s.id === glovePick.id))
+      return glovePick;
+    return gloveOptions[0];
+  }, [glovePick, gloveOptions]);
 
-  const activeWeaponList = useMemo(() => {
-    return Array.from(enabledWeapons).sort(
-      (a, b) => (WEAPON_BY_NAME[b]?.weight ?? 0) - (WEAPON_BY_NAME[a]?.weight ?? 0)
-    );
-  }, [enabledWeapons]);
+  // --- Fiyatlar ---
+  const gunTotal = useMemo(
+    () =>
+      Object.values(gunItems).reduce(
+        (sum, s) => sum + (s?.entry_price ?? 0),
+        0
+      ),
+    [gunItems]
+  );
+  const knifeCost =
+    includeKnife && effectiveKnife ? effectiveKnife.entry_price : 0;
+  const gloveCost =
+    includeGlove && effectiveGlove ? effectiveGlove.entry_price : 0;
+  const totalPrice = gunTotal + knifeCost + gloveCost;
+  const remainder = budget - totalPrice;
 
-  // Arama: seçili olmayan silahlar arasında query'ye uyanlar
+  // --- Koleksiyonlar (aileler) ---
+  const families = useMemo(() => listSkinFamilies(allSkins, 4), [allSkins]);
+  const filteredFamilies = useMemo(() => {
+    const q = familyQuery.toLowerCase().trim();
+    return q
+      ? families.filter((f) => f.family.toLowerCase().includes(q))
+      : families;
+  }, [families, familyQuery]);
+  const familySkins = useMemo(
+    () => (selectedFamily ? skinsInFamily(allSkins, selectedFamily) : []),
+    [allSkins, selectedFamily]
+  );
+
+  const activeGunList = useMemo(
+    () =>
+      Array.from(enabledGuns).sort(
+        (a, b) =>
+          (WEAPON_BY_NAME[b]?.weight ?? 0) - (WEAPON_BY_NAME[a]?.weight ?? 0)
+      ),
+    [enabledGuns]
+  );
+
   const searchResults = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return WEAPONS.filter((w) => {
-      if (enabledWeapons.has(w.name)) return false;
+      if (!GUN_CATEGORY_IDS.has(w.category)) return false;
+      if (enabledGuns.has(w.name)) return false;
       if (!q) return true;
       return w.name.toLowerCase().includes(q);
     }).slice(0, 8);
-  }, [searchQuery, enabledWeapons]);
+  }, [searchQuery, enabledGuns]);
 
-  // Akıllı öneriler: seçili silahların önerdiklerinden seçili olmayanlar
   const smartSuggestions = useMemo(() => {
     const suggestions = new Set<string>();
-    for (const w of enabledWeapons) {
-      const recs = WEAPON_SUGGESTIONS[w] || [];
-      for (const rec of recs) {
-        if (!enabledWeapons.has(rec)) suggestions.add(rec);
+    for (const w of enabledGuns) {
+      for (const rec of WEAPON_SUGGESTIONS[w] || []) {
+        if (!enabledGuns.has(rec)) suggestions.add(rec);
       }
     }
     return Array.from(suggestions).slice(0, 4);
-  }, [enabledWeapons]);
+  }, [enabledGuns]);
 
-  const remainder = budget - totalPrice;
-  const hasThemeFilter = themeColors.length > 0 || themeStyles.length > 0;
+  const hasColorFilter = themeColors.length > 0;
 
+  // --- Handlers ---
   function changeBudget(v: number) {
     setBudget(v);
-    setOverrides({});
+    setGunOverrides({});
   }
-  // v10: çoklu renk/stil toggle
   function toggleColor(id: string) {
     setThemeColors((cur) =>
       cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
     );
-    setOverrides({});
+    setGunOverrides({});
+    setKnifePick(null);
+    setGlovePick(null);
   }
-  function toggleStyle(id: string) {
-    setThemeStyles((cur) =>
-      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
-    );
-    setOverrides({});
-  }
-  function clearTheme() {
+  function clearColors() {
     setThemeColors([]);
-    setThemeStyles([]);
-    setOverrides({});
+    setGunOverrides({});
+    setKnifePick(null);
+    setGlovePick(null);
   }
   function regenerate() {
     setRegenKey((k) => k + 1);
-    setOverrides({});
+    setGunOverrides({});
   }
-  function toggleWeapon(weaponName: string) {
-    setEnabledWeapons((prev) => {
-      const next = new Set(prev);
-      if (next.has(weaponName)) next.delete(weaponName);
-      else next.add(weaponName);
-      return next;
-    });
-    setOverrides({});
-  }
-  function addWeapon(weaponName: string) {
-    setEnabledWeapons((prev) => new Set([...prev, weaponName]));
-    setOverrides({});
+  function addGun(name: string) {
+    setEnabledGuns((prev) => new Set([...prev, name]));
+    setGunOverrides({});
     setSearchQuery('');
   }
-  function removeWeapon(weaponName: string) {
-    setEnabledWeapons((prev) => {
+  function removeGun(name: string) {
+    setEnabledGuns((prev) => {
       const next = new Set(prev);
-      next.delete(weaponName);
+      next.delete(name);
       return next;
     });
-    setOverrides({});
+    setGunOverrides({});
   }
-  function applyPreset(weapons: string[]) {
-    setEnabledWeapons(new Set(weapons));
-    setOverrides({});
+  function toggleGun(name: string) {
+    setEnabledGuns((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+    setGunOverrides({});
   }
-  function swapSkin(weaponName: string, newSkin: Skin) {
-    setOverrides((o) => ({ ...o, [weaponName]: newSkin }));
+  function swapGun(weaponName: string, newSkin: Skin) {
+    setGunOverrides((o) => ({ ...o, [weaponName]: newSkin }));
   }
-
-  // Bütçeyi gerekli kadar artır
   function increaseBudgetFor(weaponName: string) {
     const minPrice = MIN_WEAPON_PRICES[weaponName] ?? 0;
-    // Bu silah için ihtiyaç: min fiyat * 1.2 (biraz pay olsun)
-    // Toplam ağırlığa göre gerekli bütçeyi hesapla
     const weight = WEAPON_BY_NAME[weaponName]?.weight ?? 0.1;
-    const totalWeight = Array.from(enabledWeapons).reduce(
+    const totalWeight = Array.from(enabledGuns).reduce(
       (sum, w) => sum + (WEAPON_BY_NAME[w]?.weight ?? 0),
       0
     );
     const requiredBudget = Math.ceil((minPrice * 1.2 * totalWeight) / weight);
-    const newBudget = Math.max(budget, requiredBudget);
-    setBudget(newBudget);
-    setOverrides({});
+    setBudget(Math.max(budget, requiredBudget));
+    setGunOverrides({});
   }
-
-  // Bir silahı daha ucuz alternatifle değiştir
   function replaceWithCheaper(weaponName: string) {
     const alternative = findCheaperAlternative(weaponName);
     if (!alternative) return;
-    setEnabledWeapons((prev) => {
+    setEnabledGuns((prev) => {
       const next = new Set(prev);
       next.delete(weaponName);
       next.add(alternative);
       return next;
     });
-    setOverrides({});
+    setGunOverrides({});
   }
 
-  // v10: tema filtresini esnete (sıkı kapatır)
-  function tryLooseTheme() {
-    setStrictColor(false);
-    setOverrides({});
+  // ====== KOLEKSİYON MODU ======
+  if (selectedFamily) {
+    return (
+      <FamilyShowcase
+        family={selectedFamily}
+        skins={familySkins}
+        onBack={() => setSelectedFamily(null)}
+      />
+    );
   }
 
-  const colorChips = THEME_TAGS.filter((t) => t.kind === 'color');
-  const styleChips = THEME_TAGS.filter((t) => t.kind === 'style');
-  const patternChips = THEME_TAGS.filter((t) => t.kind === 'pattern');
+  const nothingSelected =
+    activeGunList.length === 0 && !includeKnife && !includeGlove;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* ====== TERCİHLER ====== */}
       <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Tercihlerini Ayarla</h2>
 
@@ -268,38 +334,13 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           </div>
         </div>
 
-        {/* OYUN TARZI PRESET'LERİ */}
-        <div className="mb-4">
-          <label className="text-sm text-gray-400 mb-2 block">Oyun Tarzı</label>
-          <div className="flex gap-2 flex-wrap">
-            {LOADOUT_PRESETS.map((p) => {
-              const isMatch =
-                p.weapons.length === enabledWeapons.size &&
-                p.weapons.every((w) => enabledWeapons.has(w));
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => applyPreset(p.weapons)}
-                  title={p.description}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                    isMatch
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <span>{p.icon}</span>
-                  <span>{p.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* SİLAH ARAMA + ETİKETLER */}
+        {/* SİLAHLAR */}
         <div className="mb-6">
           <div className="flex items-baseline justify-between mb-2">
             <label className="text-sm text-gray-400">Silahlar</label>
-            <span className="text-xs text-gray-600">{enabledWeapons.size} seçili</span>
+            <span className="text-xs text-gray-600">
+              {enabledGuns.size} silah seçili
+            </span>
           </div>
 
           <div ref={searchRef} className="relative">
@@ -313,7 +354,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 input?.focus();
               }}
             >
-              {activeWeaponList.map((weaponName) => {
+              {activeGunList.map((weaponName) => {
                 const def = WEAPON_BY_NAME[weaponName];
                 return (
                   <span
@@ -327,7 +368,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        removeWeapon(weaponName);
+                        removeGun(weaponName);
                       }}
                       className="opacity-70 hover:opacity-100 ml-0.5"
                       aria-label={`${weaponName} kaldır`}
@@ -343,19 +384,18 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 placeholder={
-                  activeWeaponList.length === 0 ? 'Silah ara...' : 'Silah ekle...'
+                  activeGunList.length === 0 ? 'Silah ara...' : 'Silah ekle...'
                 }
                 className="bg-transparent border-none text-gray-200 text-sm flex-1 min-w-[120px] outline-none px-1 py-1"
               />
             </div>
 
-            {/* Arama sonuçları dropdown */}
             {searchFocused && searchResults.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--bg-tertiary)] border border-gray-700 rounded-lg shadow-xl z-10 max-h-72 overflow-y-auto">
                 {searchResults.map((w) => (
                   <button
                     key={w.name}
-                    onClick={() => addWeapon(w.name)}
+                    onClick={() => addGun(w.name)}
                     className="w-full text-left px-3 py-2 hover:bg-orange-500/10 transition-colors flex items-center justify-between"
                   >
                     <span className="text-sm text-gray-200">
@@ -373,14 +413,13 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             )}
           </div>
 
-          {/* Akıllı öneriler */}
           {smartSuggestions.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mt-2">
               <span className="text-xs text-gray-500">Önerilen:</span>
               {smartSuggestions.map((w) => (
                 <button
                   key={w}
-                  onClick={() => addWeapon(w)}
+                  onClick={() => addGun(w)}
                   className="px-2 py-0.5 bg-[var(--bg-tertiary)] hover:bg-orange-500/10 text-gray-400 hover:text-orange-400 text-xs rounded border border-gray-700 hover:border-orange-500/50 transition-colors"
                 >
                   + {w}
@@ -389,20 +428,49 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             </div>
           )}
 
-          {/* Hepsini gör */}
+          {/* Bıçak / Eldiven toggle'ları */}
+          <div className="flex gap-2 flex-wrap mt-3">
+            <button
+              onClick={() => setIncludeKnife((v) => !v)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                includeKnife
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
+              }`}
+            >
+              <span>🔪</span>
+              <span>Bıçak {includeKnife ? 'dahil' : 'ekle'}</span>
+            </button>
+            <button
+              onClick={() => setIncludeGlove((v) => !v)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                includeGlove
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
+              }`}
+            >
+              <span>🧤</span>
+              <span>Eldiven {includeGlove ? 'dahil' : 'ekle'}</span>
+            </button>
+          </div>
+
           <button
             onClick={() => setShowAllWeapons((v) => !v)}
             className="text-xs text-gray-500 hover:text-orange-400 transition-colors mt-3"
           >
-            {showAllWeapons ? '↑ Tüm silah listesini gizle' : '↓ Tüm silahları detaylı seç'}
+            {showAllWeapons
+              ? '↑ Tüm silah listesini gizle'
+              : '↓ Tüm silahları detaylı seç'}
           </button>
 
           {showAllWeapons && (
             <div className="mt-3 bg-[var(--bg-tertiary)] rounded-md p-4 space-y-4">
-              {WEAPON_CATEGORIES.map((cat) => {
-                const catWeapons = WEAPONS.filter((w) => w.category === cat.id);
+              {GUN_CATEGORIES.map((cat) => {
+                const catWeapons = WEAPONS.filter(
+                  (w) => w.category === cat.id
+                );
                 const selectedInCat = catWeapons.filter((w) =>
-                  enabledWeapons.has(w.name)
+                  enabledGuns.has(w.name)
                 ).length;
                 return (
                   <div key={cat.id}>
@@ -416,12 +484,12 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                       <div className="flex gap-1">
                         <button
                           onClick={() => {
-                            setEnabledWeapons((prev) => {
+                            setEnabledGuns((prev) => {
                               const next = new Set(prev);
                               catWeapons.forEach((w) => next.add(w.name));
                               return next;
                             });
-                            setOverrides({});
+                            setGunOverrides({});
                           }}
                           className="text-[10px] text-gray-500 hover:text-orange-400"
                         >
@@ -430,12 +498,12 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                         <span className="text-[10px] text-gray-700">·</span>
                         <button
                           onClick={() => {
-                            setEnabledWeapons((prev) => {
+                            setEnabledGuns((prev) => {
                               const next = new Set(prev);
                               catWeapons.forEach((w) => next.delete(w.name));
                               return next;
                             });
-                            setOverrides({});
+                            setGunOverrides({});
                           }}
                           className="text-[10px] text-gray-500 hover:text-orange-400"
                         >
@@ -451,16 +519,16 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                         >
                           <input
                             type="checkbox"
-                            checked={enabledWeapons.has(w.name)}
-                            onChange={() => toggleWeapon(w.name)}
+                            checked={enabledGuns.has(w.name)}
+                            onChange={() => toggleGun(w.name)}
                             className="w-3.5 h-3.5 accent-orange-500 flex-shrink-0"
                           />
                           <span
-                            className={`text-xs ${
-                              enabledWeapons.has(w.name)
+                            className={`text-xs truncate ${
+                              enabledGuns.has(w.name)
                                 ? 'text-gray-200'
                                 : 'text-gray-500'
-                            } truncate`}
+                            }`}
                           >
                             {w.name}
                             {w.team !== 'shared' && (
@@ -479,117 +547,95 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           )}
         </div>
 
-        {/* v10: Renk filtresi — çoklu seçim + sıkı/esnek toggle */}
+        {/* RENK FİLTRESİ — çoklu seçim, her zaman sıkı eşleşme */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-gray-400">
               Renk (opsiyonel){' '}
-              {themeColors.length > 0 && (
-                <span className="text-orange-400 ml-1">{themeColors.length} seçili</span>
+              {hasColorFilter && (
+                <span className="text-orange-400 ml-1">
+                  {themeColors.length} seçili
+                </span>
               )}
             </label>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={strictColor}
-                  onChange={(e) => {
-                    setStrictColor(e.target.checked);
-                    setOverrides({});
-                  }}
-                  className="w-3.5 h-3.5 accent-orange-500"
-                />
-                Sıkı eşleşme
-              </label>
-              {hasThemeFilter && (
-                <button
-                  onClick={clearTheme}
-                  className="text-xs text-gray-500 hover:text-orange-400 transition-colors"
-                >
-                  Temizle
-                </button>
-              )}
-            </div>
+            {hasColorFilter && (
+              <button
+                onClick={clearColors}
+                className="text-xs text-gray-500 hover:text-orange-400 transition-colors"
+              >
+                Temizle
+              </button>
+            )}
           </div>
-          <div className="flex gap-2 flex-wrap mb-4">
-            {colorChips.map((t) => {
+          <div className="flex gap-2 flex-wrap">
+            {COLOR_CHIPS.map((t) => {
               const selected = themeColors.includes(t.id);
               return (
                 <button
                   key={t.id}
                   onClick={() => toggleColor(t.id)}
-                  title={
-                    strictColor
-                      ? `Sadece dominant rengi ${t.label.toLowerCase()} olan skinler`
-                      : `Dominant veya ikincil rengi ${t.label.toLowerCase()} olan skinler`
-                  }
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     selected
                       ? 'bg-orange-500 text-white'
                       : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
                   }`}
                 >
+                  <span
+                    className="w-3 h-3 rounded-full border border-black/30 flex-shrink-0"
+                    style={{ background: COLOR_SWATCH[t.id] ?? '#888' }}
+                  />
                   {t.label}
                 </button>
               );
             })}
           </div>
-
-          {/* Stil filtresi */}
-          <label className="text-sm text-gray-400 mb-2 block">
-            Stil (opsiyonel)
-          </label>
-          <div className="flex gap-2 flex-wrap mb-4">
-            {styleChips.map((t) => {
-              const selected = themeStyles.includes(t.id);
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => toggleStyle(t.id)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    selected
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Desen / Pattern filtresi */}
-          {patternChips.length > 0 && (
-            <>
-              <label className="text-sm text-gray-400 mb-2 block">
-                Desen (Pattern, opsiyonel)
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                {patternChips.map((t) => {
-                  const selected = themeStyles.includes(t.id);
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => toggleStyle(t.id)}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                        selected
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[11px] text-gray-600 mt-1.5">
-                Pattern skinleri renk filtresinde de dominant renkleriyle görünür.
-              </p>
-            </>
-          )}
+          <p className="text-[11px] text-gray-600 mt-2">
+            Renk, skinin baskın (dominant) rengine göre eşleşir. Uygun skin
+            yoksa o silah boş kalır — yanlış renk önerilmez.
+          </p>
         </div>
 
-        <div className="flex justify-end">
+        {/* KOLEKSİYONLAR — aile (desen) seçimi */}
+        <div>
+          <label className="text-sm text-gray-400 mb-2 block">
+            Koleksiyonlar (opsiyonel)
+          </label>
+          <input
+            type="text"
+            value={familyQuery}
+            onChange={(e) => setFamilyQuery(e.target.value)}
+            placeholder="Koleksiyon ara — Printstream, Doppler, Fade..."
+            className="w-full bg-[var(--bg-tertiary)] border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-orange-500/50 mb-2"
+          />
+          <div className="flex gap-2 flex-wrap max-h-36 overflow-y-auto p-0.5">
+            {filteredFamilies.map((f) => (
+              <button
+                key={f.family}
+                onClick={() => setSelectedFamily(f.family)}
+                title={`${f.weaponCount} silah · en ucuz ${f.minPrice.toFixed(
+                  0
+                )}€`}
+                className="px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--bg-tertiary)] text-gray-300 hover:bg-amber-600 hover:text-white transition-colors flex items-center gap-1.5"
+              >
+                {f.family}
+                <span className="opacity-60 text-[10px]">
+                  {f.weaponCount}
+                </span>
+              </button>
+            ))}
+            {filteredFamilies.length === 0 && (
+              <span className="text-xs text-gray-600 py-2">
+                Eşleşen koleksiyon yok.
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-600 mt-1.5">
+            Bir koleksiyon seçince o desenin tüm silah versiyonları (bütçe ve
+            filtre bağımsız) gösterilir.
+          </p>
+        </div>
+
+        <div className="flex justify-end mt-4">
           <button
             onClick={regenerate}
             className="px-4 py-1.5 bg-[var(--bg-tertiary)] hover:bg-gray-700 text-white text-sm font-medium rounded-md transition-colors"
@@ -599,16 +645,23 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         </div>
       </div>
 
+      {/* ====== TOPLAM ====== */}
       <div className="bg-gradient-to-r from-orange-500/10 to-orange-600/5 border border-orange-500/30 rounded-xl p-5 mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <div className="text-xs text-gray-400 uppercase tracking-wider">Toplam Tahmini</div>
+          <div className="text-xs text-gray-400 uppercase tracking-wider">
+            Toplam Tahmini
+          </div>
           <div className="text-3xl font-bold mt-1">
             {totalPrice.toFixed(2)}€
-            <span className="text-sm text-gray-500 font-normal ml-2">/ {budget}€ bütçe</span>
+            <span className="text-sm text-gray-500 font-normal ml-2">
+              / {budget}€ bütçe
+            </span>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xs text-gray-400 uppercase tracking-wider">Kalan</div>
+          <div className="text-xs text-gray-400 uppercase tracking-wider">
+            Kalan
+          </div>
           <div
             className={`text-2xl font-bold mt-1 ${
               remainder >= 0 ? 'text-green-400' : 'text-red-400'
@@ -620,148 +673,156 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         </div>
       </div>
 
-      {/* v10: tema yüzünden boş kalan slotlar varsa global uyarı */}
+      {/* Renk yüzünden boş kalan silahlar */}
       {unmatchedSet.size > 0 && (
-        <div className="bg-amber-900/20 border border-amber-600/50 rounded-xl p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <div className="text-amber-300 font-semibold text-sm">
-              ⚠️ {unmatchedSet.size} silah için uygun skin bulunamadı
-            </div>
-            <div className="text-xs text-amber-200/80 mt-1">
-              Seçtiğin temada bu silahların renkleri uymuyor. Esnek modu dene, bütçeyi artır veya silahları çıkar.
-            </div>
+        <div className="bg-amber-900/20 border border-amber-600/50 rounded-xl p-4 mb-6">
+          <div className="text-amber-300 font-semibold text-sm">
+            🎨 {unmatchedSet.size} silah için seçtiğin renkte uygun skin yok
           </div>
-          <div className="flex gap-2">
-            {strictColor && (
-              <button
-                onClick={tryLooseTheme}
-                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-md transition-colors"
-              >
-                Esnek modu dene
-              </button>
-            )}
-            <button
-              onClick={clearTheme}
-              className="px-3 py-1.5 bg-[var(--bg-tertiary)] hover:bg-gray-700 text-gray-300 text-xs font-medium rounded-md transition-colors"
-            >
-              Temayı kaldır
-            </button>
+          <div className="text-xs text-amber-200/80 mt-1">
+            Yanlış renk önermek yerine o silahlar boş bırakıldı. Bütçeyi artır,
+            başka renk ekle veya o silahları çıkar.
           </div>
         </div>
       )}
 
-      {activeWeaponList.length === 0 ? (
+      {nothingSelected ? (
         <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-8 text-center text-gray-400">
-          En az bir silah seç. Yukarıdan oyun tarzı seç veya arama kutusunu kullan.
+          En az bir silah, bıçak veya eldiven seç.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-in">
-          {activeWeaponList.map((weaponName) => {
-            const skin = finalItems[weaponName];
-            const isThemeUnmatched = unmatchedSet.has(weaponName) && !skin;
-            return (
-              <WeaponCard
-                key={weaponName}
-                weaponName={weaponName}
-                skin={skin}
-                allSkins={allSkins}
-                themeColors={themeColors}
-                themeStyles={themeStyles}
-                strictColor={strictColor}
-                isThemeUnmatched={isThemeUnmatched}
-                onSwap={(newSkin) => swapSkin(weaponName, newSkin)}
-                onIncreaseBudget={() => increaseBudgetFor(weaponName)}
-                onReplaceCheaper={() => replaceWithCheaper(weaponName)}
-                onRemove={() => removeWeapon(weaponName)}
-                onTryLooseTheme={tryLooseTheme}
-                onClearTheme={clearTheme}
-                isOverridden={!!overrides[weaponName]}
-              />
-            );
-          })}
-        </div>
+        <>
+          {/* SİLAHLAR */}
+          {activeGunList.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-in">
+              {activeGunList.map((weaponName) => {
+                const skin = gunItems[weaponName];
+                const isThemeUnmatched =
+                  unmatchedSet.has(weaponName) && !skin;
+                return (
+                  <GunCard
+                    key={weaponName}
+                    weaponName={weaponName}
+                    skin={skin}
+                    allSkins={allSkins}
+                    themeColors={themeColors}
+                    isThemeUnmatched={isThemeUnmatched}
+                    isRelaxedMatch={
+                      relaxedSet.has(weaponName) && !gunOverrides[weaponName]
+                    }
+                    isOverridden={!!gunOverrides[weaponName]}
+                    onSwap={(s) => swapGun(weaponName, s)}
+                    onIncreaseBudget={() => increaseBudgetFor(weaponName)}
+                    onReplaceCheaper={() => replaceWithCheaper(weaponName)}
+                    onRemove={() => removeGun(weaponName)}
+                    onClearColors={clearColors}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* BIÇAK & ELDİVEN */}
+          {(includeKnife || includeGlove) && (
+            <div className="mt-6 space-y-4">
+              {includeKnife && (
+                <SlotGallery
+                  title="Bıçak"
+                  icon="🔪"
+                  options={knifeOptions}
+                  selected={effectiveKnife}
+                  hasColorFilter={hasColorFilter}
+                  onPick={(s) => setKnifePick(s)}
+                  onRemove={() => setIncludeKnife(false)}
+                />
+              )}
+              {includeGlove && (
+                <SlotGallery
+                  title="Eldiven"
+                  icon="🧤"
+                  options={gloveOptions}
+                  selected={effectiveGlove}
+                  hasColorFilter={hasColorFilter}
+                  onPick={(s) => setGlovePick(s)}
+                  onRemove={() => setIncludeGlove(false)}
+                />
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-interface WeaponCardProps {
+// ============================================================
+// SİLAH KARTI
+// ============================================================
+
+interface GunCardProps {
   weaponName: string;
   skin?: Skin;
   allSkins: Skin[];
   themeColors: string[];
-  themeStyles: string[];
-  strictColor: boolean;
   isThemeUnmatched: boolean;
-  onSwap: (newSkin: Skin) => void;
+  /** v11: tam renk bulunamadı, yakın tonla dolduruldu */
+  isRelaxedMatch: boolean;
+  isOverridden: boolean;
+  onSwap: (s: Skin) => void;
   onIncreaseBudget: () => void;
   onReplaceCheaper: () => void;
   onRemove: () => void;
-  onTryLooseTheme: () => void;
-  onClearTheme: () => void;
-  isOverridden: boolean;
+  onClearColors: () => void;
 }
 
-function WeaponCard({
+function GunCard({
   weaponName,
   skin,
   allSkins,
   themeColors,
-  themeStyles,
-  strictColor,
   isThemeUnmatched,
+  isRelaxedMatch,
+  isOverridden,
   onSwap,
   onIncreaseBudget,
   onReplaceCheaper,
   onRemove,
-  onTryLooseTheme,
-  onClearTheme,
-  isOverridden,
-}: WeaponCardProps) {
+  onClearColors,
+}: GunCardProps) {
   const [showAlts, setShowAlts] = useState(false);
 
   const alternatives = useMemo(() => {
     if (!skin || !showAlts) return [];
     return findAlternatives(allSkins, skin, {
       themeColors,
-      themeStyles,
-      strictColor,
+      themeStyles: [],
+      strictColor: 'auto',
       maxResults: 8,
     });
-  }, [allSkins, skin, themeColors, themeStyles, strictColor, showAlts]);
+  }, [allSkins, skin, themeColors, showAlts]);
 
-  // v10: Tema yüzünden boş kalmış slot — tema uyarı kartı
+  // Renk yüzünden boş slot
   if (!skin && isThemeUnmatched) {
     return (
       <div className="bg-[var(--bg-secondary)] border border-amber-500/40 rounded-xl p-4 flex flex-col min-h-[260px]">
         <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">
           {weaponName}
         </div>
-
         <div className="flex-1 flex flex-col items-center justify-center text-center py-4 px-2">
           <div className="text-3xl mb-2">🎨</div>
           <div className="text-sm font-semibold text-amber-300 mb-1">
-            Bu temada uygun {weaponName} yok
+            Bu renkte uygun {weaponName} yok
           </div>
           <div className="text-xs text-gray-400">
-            Seçtiğin renk/stil bu silah için eşleşmedi.
+            Seçtiğin renk bu silah için eşleşmedi.
           </div>
         </div>
-
         <div className="flex flex-col gap-1.5 mt-3">
-          {strictColor && (
-            <button
-              onClick={onTryLooseTheme}
-              className="w-full bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium py-2 rounded-md transition-colors"
-            >
-              Esnek modu dene
-            </button>
-          )}
           <button
-            onClick={onClearTheme}
-            className="w-full bg-transparent hover:bg-[var(--bg-tertiary)] text-gray-300 hover:text-white text-xs py-2 rounded-md border border-gray-700 hover:border-gray-600 transition-colors"
+            onClick={onClearColors}
+            className="w-full bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium py-2 rounded-md transition-colors"
           >
-            Temayı kaldır
+            Renk filtresini kaldır
           </button>
           <button
             onClick={onRemove}
@@ -774,17 +835,15 @@ function WeaponCard({
     );
   }
 
-  // Bütçe yetmiyor — uyarı kartı göster
+  // Bütçe yetmiyor
   if (!skin) {
     const minPrice = MIN_WEAPON_PRICES[weaponName] ?? 0;
     const cheaperAlt = findCheaperAlternative(weaponName);
-
     return (
       <div className="bg-[var(--bg-secondary)] border border-orange-500/40 rounded-xl p-4 flex flex-col min-h-[260px]">
         <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">
           {weaponName}
         </div>
-
         <div className="flex-1 flex flex-col items-center justify-center text-center py-4 px-2">
           <div className="text-3xl mb-2">⚠️</div>
           <div className="text-sm font-semibold text-gray-200 mb-1">
@@ -797,7 +856,6 @@ function WeaponCard({
             </span>
           </div>
         </div>
-
         <div className="flex flex-col gap-1.5 mt-3">
           <button
             onClick={onIncreaseBudget}
@@ -829,12 +887,31 @@ function WeaponCard({
   return (
     <div className="skin-card bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-4 hover:border-orange-500/50 flex flex-col">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500">{weaponName}</div>
-        {isOverridden && (
-          <div className="text-[9px] text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded font-medium">
-            ELLE DEĞİŞ
-          </div>
-        )}
+        <div className="text-[10px] uppercase tracking-wider text-gray-500">
+          {weaponName}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {isOverridden && (
+            <div className="text-[9px] text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded font-medium">
+              ELLE SEÇİLDİ
+            </div>
+          )}
+          {isRelaxedMatch && !isOverridden && (
+            <div
+              className="text-[9px] text-sky-300 bg-sky-500/10 px-1.5 py-0.5 rounded font-medium"
+              title="Bu renkte tam eşleşme yok — yakın tonlu bir skin seçildi"
+            >
+              YAKIN TON
+            </div>
+          )}
+          <button
+            onClick={onRemove}
+            className="text-gray-600 hover:text-red-400 text-sm leading-none"
+            aria-label={`${weaponName} kaldır`}
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-lg overflow-hidden mb-3 aspect-[4/3] flex items-center justify-center">
@@ -848,7 +925,9 @@ function WeaponCard({
       </div>
 
       <div className="flex-1">
-        <div className={`text-xs font-medium mb-1 ${rarityColor}`}>{skin.rarity}</div>
+        <div className={`text-xs font-medium mb-1 ${rarityColor}`}>
+          {skin.rarity}
+        </div>
         <div className="text-sm font-semibold leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
           {skin.name}
         </div>
@@ -898,8 +977,12 @@ function WeaponCard({
                 loading="lazy"
               />
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-medium truncate">{alt.name}</div>
-                <div className="text-[10px] text-gray-500">{alt.entry_wear}</div>
+                <div className="text-[11px] font-medium truncate">
+                  {alt.name}
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  {alt.entry_wear}
+                </div>
               </div>
               <div className="text-xs font-bold text-orange-500 flex-shrink-0">
                 {alt.entry_price.toFixed(2)}€
@@ -910,8 +993,297 @@ function WeaponCard({
       )}
 
       {showAlts && alternatives.length === 0 && (
-        <div className="text-xs text-gray-600 mt-2 text-center py-3">Alternatif bulunamadı</div>
+        <div className="text-xs text-gray-600 mt-2 text-center py-3">
+          Alternatif bulunamadı
+        </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// BIÇAK / ELDİVEN GALERİSİ
+// ============================================================
+
+interface SlotGalleryProps {
+  title: string;
+  icon: string;
+  options: Skin[];
+  selected?: Skin;
+  hasColorFilter: boolean;
+  onPick: (s: Skin) => void;
+  onRemove: () => void;
+}
+
+function SlotGallery({
+  title,
+  icon,
+  options,
+  selected,
+  hasColorFilter,
+  onPick,
+  onRemove,
+}: SlotGalleryProps) {
+  const [modelFilter, setModelFilter] = useState<string | null>(null);
+
+  // Mevcut seçeneklerdeki modeller (skin sayısına göre sıralı)
+  const models = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of options) m.set(s.weapon, (m.get(s.weapon) ?? 0) + 1);
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+  }, [options]);
+
+  const shown = useMemo(() => {
+    const list = modelFilter
+      ? options.filter((s) => s.weapon === modelFilter)
+      : options;
+    return list.slice(0, 80);
+  }, [options, modelFilter]);
+
+  const rarityColor = selected
+    ? RARITY_COLORS[selected.rarity] || 'text-gray-400'
+    : 'text-gray-400';
+
+  return (
+    <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm font-semibold flex items-center gap-2">
+          <span>{icon}</span>
+          <span>{title}</span>
+          <span className="text-xs text-gray-600 font-normal">
+            {options.length} seçenek
+          </span>
+        </div>
+        <button
+          onClick={onRemove}
+          className="text-gray-600 hover:text-red-400 text-xs"
+        >
+          Çıkar
+        </button>
+      </div>
+
+      {options.length === 0 ? (
+        <div className="text-center text-sm text-gray-400 py-8">
+          {hasColorFilter
+            ? `Seçtiğin renkte ${title.toLowerCase()} bulunamadı. Renk filtresini değiştir.`
+            : `${title} bulunamadı.`}
+        </div>
+      ) : (
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Seçili önizleme */}
+          {selected && (
+            <div className="md:w-56 flex-shrink-0">
+              <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-lg overflow-hidden aspect-[4/3] flex items-center justify-center mb-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selected.image}
+                  alt={selected.name}
+                  className="w-full h-full object-contain p-2"
+                />
+              </div>
+              <div className={`text-[11px] font-medium ${rarityColor}`}>
+                {selected.rarity}
+              </div>
+              <div className="text-sm font-semibold leading-tight">
+                {selected.name}
+              </div>
+              <div className="text-[10px] text-gray-500 mb-1">
+                {selected.entry_wear}
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-lg font-bold text-orange-500">
+                  {selected.entry_price.toFixed(2)}€
+                </span>
+                <a
+                  href={affiliateUrl(selected.entry_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-400 hover:text-orange-400 transition-colors"
+                >
+                  Satın al →
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* Galeri */}
+          <div className="flex-1 min-w-0">
+            {/* Model filtresi */}
+            <div className="flex gap-1.5 flex-wrap mb-2">
+              <button
+                onClick={() => setModelFilter(null)}
+                className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                  modelFilter === null
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
+                }`}
+              >
+                Tümü
+              </button>
+              {models.map(([model, count]) => (
+                <button
+                  key={model}
+                  onClick={() =>
+                    setModelFilter((cur) => (cur === model ? null : model))
+                  }
+                  className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                    modelFilter === model
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {model}{' '}
+                  <span className="opacity-60">{count}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Kaydırmalı küçük görseller */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 max-h-72 overflow-y-auto p-0.5">
+              {shown.map((s) => {
+                const isSel = selected?.id === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => onPick(s)}
+                    title={`${s.name} — ${s.entry_price.toFixed(2)}€`}
+                    className={`rounded-lg border p-1.5 text-left transition-colors ${
+                      isSel
+                        ? 'border-orange-500 bg-orange-500/10'
+                        : 'border-gray-800 hover:border-orange-500/50 bg-[var(--bg-tertiary)]'
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={s.image}
+                      alt={s.name}
+                      className="w-full aspect-[4/3] object-contain bg-black rounded mb-1"
+                      loading="lazy"
+                    />
+                    <div className="text-[10px] text-gray-300 truncate leading-tight">
+                      {s.weapon}
+                    </div>
+                    <div className="text-[10px] text-gray-500 truncate leading-tight">
+                      {s.name.includes('|')
+                        ? s.name.split('|')[1].trim()
+                        : s.name}
+                    </div>
+                    <div className="text-[11px] font-bold text-orange-500">
+                      {s.entry_price.toFixed(2)}€
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {options.length > shown.length && (
+              <div className="text-[11px] text-gray-600 mt-1.5">
+                {shown.length} / {options.length} gösteriliyor — daraltmak için
+                model seç.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// KOLEKSİYON SHOWCASE
+// ============================================================
+
+interface FamilyShowcaseProps {
+  family: string;
+  skins: Skin[];
+  onBack: () => void;
+}
+
+function FamilyShowcase({ family, skins, onBack }: FamilyShowcaseProps) {
+  const minPrice = skins.length
+    ? Math.min(...skins.map((s) => s.entry_price))
+    : 0;
+  const totalAll = skins.reduce((sum, s) => sum + s.entry_price, 0);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <button
+        onClick={onBack}
+        className="text-sm text-gray-400 hover:text-orange-400 transition-colors mb-4"
+      >
+        ← Loadout&apos;a dön
+      </button>
+
+      <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/30 rounded-xl p-5 mb-6">
+        <div className="text-xs text-amber-400/80 uppercase tracking-wider">
+          Koleksiyon
+        </div>
+        <div className="text-3xl font-bold mt-1">{family}</div>
+        <div className="text-sm text-gray-400 mt-1">
+          {skins.length} silah versiyonu · en ucuz{' '}
+          <span className="text-orange-500 font-semibold">
+            {minPrice.toFixed(2)}€
+          </span>{' '}
+          · tümü{' '}
+          <span className="text-gray-300 font-semibold">
+            {totalAll.toFixed(0)}€
+          </span>
+        </div>
+        <div className="text-[11px] text-gray-600 mt-2">
+          Bu desenin tüm silahları — bütçe ve renk filtrelerinden bağımsız.
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-in">
+        {skins.map((s) => {
+          const rarityColor = RARITY_COLORS[s.rarity] || 'text-gray-400';
+          return (
+            <div
+              key={s.id}
+              className="skin-card bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-4 hover:border-amber-500/50 flex flex-col"
+            >
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">
+                {s.weapon}
+              </div>
+              <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-lg overflow-hidden mb-3 aspect-[4/3] flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={s.image}
+                  alt={s.name}
+                  className="w-full h-full object-contain p-2"
+                  loading="lazy"
+                />
+              </div>
+              <div className="flex-1">
+                <div className={`text-xs font-medium mb-1 ${rarityColor}`}>
+                  {s.rarity}
+                </div>
+                <div className="text-sm font-semibold leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
+                  {s.name}
+                </div>
+                <div className="text-[10px] text-gray-500 mb-3">
+                  {s.entry_wear}
+                </div>
+              </div>
+              <div className="flex items-baseline justify-between border-t border-gray-800 pt-3">
+                <div>
+                  <div className="text-lg font-bold text-orange-500">
+                    {s.entry_price.toFixed(2)}€
+                  </div>
+                  <div className="text-[10px] text-gray-600">Skinport</div>
+                </div>
+                <a
+                  href={affiliateUrl(s.entry_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-400 hover:text-orange-400 transition-colors"
+                >
+                  Satın al →
+                </a>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
