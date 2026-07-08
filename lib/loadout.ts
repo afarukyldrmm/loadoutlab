@@ -34,6 +34,60 @@ export interface Skin {
 }
 
 // ============================================================
+// WEAR / FLOAT FİLTRESİ (v12)
+// ============================================================
+
+/** Wear kademeleri — iyiden kötüye */
+export const WEAR_ORDER = [
+  'Factory New',
+  'Minimal Wear',
+  'Field-Tested',
+  'Well-Worn',
+  'Battle-Scarred',
+] as const;
+
+export const WEAR_SHORT: Record<string, string> = {
+  'Factory New': 'FN',
+  'Minimal Wear': 'MW',
+  'Field-Tested': 'FT',
+  'Well-Worn': 'WW',
+  'Battle-Scarred': 'BS',
+};
+
+/**
+ * Skin listesini wear filtresine göre dönüştürür.
+ *
+ * - wears boş → liste aynen döner (filtre yok).
+ * - Değilse: her skin için seçili wear'ler içindeki EN UCUZ satış baz alınır;
+ *   entry_price / entry_wear / entry_url o wear'e göre yeniden yazılır.
+ *   Seçili wear'lerde hiç satışı olmayan skin listeden çıkar.
+ *
+ * Bu dönüşüm sayesinde öneri algoritması, galeriler ve alternatifler
+ * hiçbir değişiklik gerektirmeden wear filtresiyle çalışır.
+ */
+export function applyWearFilter(skins: Skin[], wears: string[]): Skin[] {
+  if (wears.length === 0) return skins;
+  const allowed = new Set(wears);
+  const out: Skin[] = [];
+  for (const s of skins) {
+    const candidates = s.wears.filter(
+      (w) => allowed.has(w.wear) && w.min_price > 0 && w.quantity > 0
+    );
+    if (candidates.length === 0) continue;
+    const best = candidates.reduce((a, b) =>
+      a.min_price <= b.min_price ? a : b
+    );
+    out.push({
+      ...s,
+      entry_price: best.min_price,
+      entry_wear: best.wear,
+      entry_url: best.url,
+    });
+  }
+  return out;
+}
+
+// ============================================================
 // SİLAH MODELLERİ (her biri ayrı seçilebilir)
 // ============================================================
 

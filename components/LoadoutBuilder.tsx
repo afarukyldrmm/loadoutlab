@@ -8,6 +8,9 @@ import {
   WEAPONS,
   WEAPON_BY_NAME,
   WEAPON_CATEGORIES,
+  WEAR_ORDER,
+  WEAR_SHORT,
+  applyWearFilter,
   MIN_WEAPON_PRICES,
   findCheaperAlternative,
   recommendLoadout,
@@ -82,6 +85,15 @@ export default function LoadoutBuilder({ allSkins }: Props) {
   const [familyQuery, setFamilyQuery] = useState('');
   const [regenKey, setRegenKey] = useState(0);
   const [gunOverrides, setGunOverrides] = useState<Record<string, Skin>>({});
+  // v12 UI: gelişmiş ayarlar katlaması + wear (kalite) filtresi
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [wearFilter, setWearFilter] = useState<string[]>([]);
+
+  // Wear filtresi uygulanmış skin havuzu — tüm öneri/galeri/alternatifler bunu kullanır
+  const skinPool = useMemo(
+    () => applyWearFilter(allSkins, wearFilter),
+    [allSkins, wearFilter]
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [showAllWeapons, setShowAllWeapons] = useState(false);
@@ -99,7 +111,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
 
   // --- Silah loadout'u (v11: kademeli renk — önce tam eşleşme, yoksa yakın ton) ---
   const loadout = useMemo(() => {
-    return recommendLoadout(allSkins, {
+    return recommendLoadout(skinPool, {
       budget,
       themeColors,
       themeStyles: [],
@@ -109,7 +121,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
       variationSeed: regenKey,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget, themeColors, enabledGuns, regenKey, allSkins]);
+  }, [budget, themeColors, enabledGuns, regenKey, skinPool]);
 
   const unmatchedSet = useMemo(
     () => new Set(loadout.unmatchedWeapons ?? []),
@@ -131,12 +143,12 @@ export default function LoadoutBuilder({ allSkins }: Props) {
 
   // --- Bıçak & eldiven galerileri (tüm modeller, renk filtreli) ---
   const knifeOptions = useMemo(
-    () => themeMatchingSkins(allSkins, 'knife', themeColors),
-    [allSkins, themeColors]
+    () => themeMatchingSkins(skinPool, 'knife', themeColors),
+    [skinPool, themeColors]
   );
   const gloveOptions = useMemo(
-    () => themeMatchingSkins(allSkins, 'glove', themeColors),
-    [allSkins, themeColors]
+    () => themeMatchingSkins(skinPool, 'glove', themeColors),
+    [skinPool, themeColors]
   );
   const effectiveKnife = useMemo(() => {
     if (knifePick && knifeOptions.some((s) => s.id === knifePick.id))
@@ -253,6 +265,15 @@ export default function LoadoutBuilder({ allSkins }: Props) {
       return next;
     });
     setGunOverrides({});
+  }
+  // v12: wear (kalite) filtresi — FN/MW/FT/WW/BS çoklu seçim
+  function toggleWear(wear: string) {
+    setWearFilter((cur) =>
+      cur.includes(wear) ? cur.filter((w) => w !== wear) : [...cur, wear]
+    );
+    setGunOverrides({});
+    setKnifePick(null);
+    setGlovePick(null);
   }
   function swapGun(weaponName: string, newSkin: Skin) {
     setGunOverrides((o) => ({ ...o, [weaponName]: newSkin }));
@@ -547,7 +568,58 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           )}
         </div>
 
-        {/* RENK FİLTRESİ — çoklu seçim, her zaman sıkı eşleşme */}
+        {/* KALİTE (WEAR/FLOAT) FİLTRESİ — v12 */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm text-gray-400">
+              Kalite / Wear (opsiyonel){' '}
+              {wearFilter.length > 0 && (
+                <span className="text-orange-400 ml-1">
+                  {wearFilter.map((w) => WEAR_SHORT[w]).join(', ')}
+                </span>
+              )}
+            </label>
+            {wearFilter.length > 0 && (
+              <button
+                onClick={() => {
+                  setWearFilter([]);
+                  setGunOverrides({});
+                }}
+                className="text-xs text-gray-500 hover:text-orange-400 transition-colors"
+              >
+                Temizle
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {WEAR_ORDER.map((wear) => {
+              const selected = wearFilter.includes(wear);
+              return (
+                <button
+                  key={wear}
+                  onClick={() => toggleWear(wear)}
+                  title={wear}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    selected
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {WEAR_SHORT[wear]}
+                  <span className="opacity-60 ml-1 hidden sm:inline">
+                    {wear}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-gray-600 mt-2">
+            Seçili kalitede satışı olmayan skinler önerilmez; fiyatlar seçili
+            kaliteye göre gösterilir. Boş bırakırsan en ucuz kalite baz alınır.
+          </p>
+        </div>
+
+        {/* RENK FİLTRESİ — çoklu seçim, kademeli eşleşme */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-gray-400">
@@ -574,6 +646,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 <button
                   key={t.id}
                   onClick={() => toggleColor(t.id)}
+                  title="Renk, skinin baskın rengine göre eşleşir. Tam eşleşme yoksa yakın ton önerilir."
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     selected
                       ? 'bg-orange-500 text-white'
@@ -589,12 +662,19 @@ export default function LoadoutBuilder({ allSkins }: Props) {
               );
             })}
           </div>
-          <p className="text-[11px] text-gray-600 mt-2">
-            Renk, skinin baskın (dominant) rengine göre eşleşir. Uygun skin
-            yoksa o silah boş kalır — yanlış renk önerilmez.
-          </p>
         </div>
 
+        {/* GELİŞMİŞ AYARLAR — katlanır bölüm (v12) */}
+        <button
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="text-xs text-gray-500 hover:text-orange-400 transition-colors flex items-center gap-1.5"
+        >
+          <span>⚙️</span>
+          <span>Koleksiyonlar (Printstream, Doppler...) {showAdvanced ? '▲' : '▼'}</span>
+        </button>
+
+        {showAdvanced && (
+        <div className="mt-4">
         {/* KOLEKSİYONLAR — aile (desen) seçimi */}
         <div>
           <label className="text-sm text-gray-400 mb-2 block">
@@ -634,6 +714,8 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             filtre bağımsız) gösterilir.
           </p>
         </div>
+        </div>
+        )}
 
         <div className="flex justify-end mt-4">
           <button
@@ -680,7 +762,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             🎨 {unmatchedSet.size} silah için seçtiğin renkte uygun skin yok
           </div>
           <div className="text-xs text-amber-200/80 mt-1">
-            Yanlış renk önermek yerine o silahlar boş bırakıldı. Bütçeyi artır,
+            Bu silahlar için yakın tonda bile skin bulunamadı. Bütçeyi artır,
             başka renk ekle veya o silahları çıkar.
           </div>
         </div>
@@ -704,7 +786,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                     key={weaponName}
                     weaponName={weaponName}
                     skin={skin}
-                    allSkins={allSkins}
+                    allSkins={skinPool}
                     themeColors={themeColors}
                     isThemeUnmatched={isThemeUnmatched}
                     isRelaxedMatch={
