@@ -9,8 +9,28 @@ async function getSkins(): Promise<Skin[]> {
   return JSON.parse(raw);
 }
 
+// v13: fiyatların son güncelleme zamanı (update_prices.py yazar)
+function getPricesUpdatedAt(): string | null {
+  try {
+    const raw = fs.readFileSync(
+      path.join(process.cwd(), 'public', 'data', 'meta.json'),
+      'utf-8'
+    );
+    const meta = JSON.parse(raw);
+    if (!meta.prices_updated_at) return null;
+    return new Date(meta.prices_updated_at).toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch {
+    return null;
+  }
+}
+
 export default async function HomePage() {
   const skins = await getSkins();
+  const pricesUpdatedAt = getPricesUpdatedAt();
 
   return (
     <main className="min-h-screen">
@@ -24,8 +44,13 @@ export default async function HomePage() {
               CS2 için kişiselleştirilmiş skin önerileri
             </p>
           </div>
-          <div className="text-xs text-gray-500">
-            {skins.length} skin · canlı Skinport fiyatları
+          <div className="text-xs text-gray-500 text-right">
+            <div>{skins.length} skin · Skinport fiyatları</div>
+            {pricesUpdatedAt && (
+              <div className="text-gray-600 mt-0.5">
+                Son güncelleme: {pricesUpdatedAt}
+              </div>
+            )}
           </div>
         </div>
       </header>
