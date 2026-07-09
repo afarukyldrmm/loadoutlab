@@ -195,38 +195,6 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // --- Silah loadout'u (v11: kademeli renk — önce tam eşleşme, yoksa yakın ton) ---
-  const loadout = useMemo(() => {
-    return recommendLoadout(skinPool, {
-      budget,
-      themeColors,
-      themeStyles: [],
-      strictColor: exactColorsOnly ? true : 'auto',
-      respectThemeStrictly: true,
-      enabledWeapons: Array.from(enabledGuns),
-      variationSeed: regenKey,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget, themeColors, enabledGuns, regenKey, skinPool, exactColorsOnly]);
-
-  const unmatchedSet = useMemo(
-    () => new Set(loadout.unmatchedWeapons ?? []),
-    [loadout.unmatchedWeapons]
-  );
-
-  const relaxedSet = useMemo(
-    () => new Set(loadout.relaxedWeapons ?? []),
-    [loadout.relaxedWeapons]
-  );
-
-  const gunItems = useMemo(() => {
-    const merged: Record<string, Skin> = { ...loadout.items };
-    for (const [weaponName, skin] of Object.entries(gunOverrides)) {
-      if (skin && enabledGuns.has(weaponName)) merged[weaponName] = skin;
-    }
-    return merged;
-  }, [loadout, gunOverrides, enabledGuns]);
-
   // --- Bıçak & eldiven galerileri (tüm modeller, renk filtreli) ---
   const knifeOptions = useMemo(
     () =>
@@ -258,6 +226,45 @@ export default function LoadoutBuilder({ allSkins }: Props) {
       return glovePick;
     return gloveOptions[0];
   }, [glovePick, gloveOptions]);
+
+  // --- Silah loadout'u (v11: kademeli renk — önce tam eşleşme, yoksa yakın ton) ---
+  // v15 fix: bıçak/eldiven maliyeti silah bütçesinden DÜŞÜLÜR — toplam artık
+  // bütçeyi aşmaz. (Eskiden silahlar tüm bütçeyi kullanıp bıçak üstüne biniyordu.)
+  const reservedCost =
+    (includeKnife && effectiveKnife ? effectiveKnife.entry_price : 0) +
+    (includeGlove && effectiveGlove ? effectiveGlove.entry_price : 0);
+  const gunBudget = Math.max(0, budget - reservedCost);
+
+  const loadout = useMemo(() => {
+    return recommendLoadout(skinPool, {
+      budget: gunBudget,
+      themeColors,
+      themeStyles: [],
+      strictColor: exactColorsOnly ? true : 'auto',
+      respectThemeStrictly: true,
+      enabledWeapons: Array.from(enabledGuns),
+      variationSeed: regenKey,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gunBudget, themeColors, enabledGuns, regenKey, skinPool, exactColorsOnly]);
+
+  const unmatchedSet = useMemo(
+    () => new Set(loadout.unmatchedWeapons ?? []),
+    [loadout.unmatchedWeapons]
+  );
+
+  const relaxedSet = useMemo(
+    () => new Set(loadout.relaxedWeapons ?? []),
+    [loadout.relaxedWeapons]
+  );
+
+  const gunItems = useMemo(() => {
+    const merged: Record<string, Skin> = { ...loadout.items };
+    for (const [weaponName, skin] of Object.entries(gunOverrides)) {
+      if (skin && enabledGuns.has(weaponName)) merged[weaponName] = skin;
+    }
+    return merged;
+  }, [loadout, gunOverrides, enabledGuns]);
 
   // --- Fiyatlar ---
   const gunTotal = useMemo(
