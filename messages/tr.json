@@ -105,6 +105,19 @@
     "backHome": "← LoadoutLab ana sayfa",
     "readyTitle": "Hazır loadout'lar"
   },
+  "skinPage": {
+    "metaTitle": "{name} — Fiyatlar & Ucuz Benzerleri | LoadoutLab",
+    "metaDescription": "{name} canlı Skinport fiyatları: tüm kalitelerde {min}€ – {max}€ arası. Ayrıca çok daha ucuza görsel benzerleri.",
+    "backHome": "← LoadoutLab",
+    "palette": "Renkler:",
+    "fromWear": "başlangıç ({wear})",
+    "buyNow": "Skinport'ta al →",
+    "buildWith": "Loadout kur",
+    "pricesHeading": "Kaliteye göre fiyatlar",
+    "inStock": "{count} ilan",
+    "lookalikesHeading": "Ucuz benzerleri",
+    "familyHeading": "Diğer silahlarda {finish}"
+  },
   "colors": {
     "red": "Kırmızı",
     "blue": "Mavi",

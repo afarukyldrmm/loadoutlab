@@ -105,6 +105,19 @@
     "backHome": "← LoadoutLab home",
     "readyTitle": "Ready-made loadouts"
   },
+  "skinPage": {
+    "metaTitle": "{name} — Prices & Cheap Alternatives | LoadoutLab",
+    "metaDescription": "{name} live Skinport prices from {min}€ to {max}€ across all wears, plus visually similar skins that cost a fraction of the price.",
+    "backHome": "← LoadoutLab",
+    "palette": "Colors:",
+    "fromWear": "from ({wear})",
+    "buyNow": "Buy on Skinport →",
+    "buildWith": "Build a loadout",
+    "pricesHeading": "Prices by wear",
+    "inStock": "{count} listed",
+    "lookalikesHeading": "Cheap lookalikes",
+    "familyHeading": "{finish} on other weapons"
+  },
   "colors": {
     "red": "Red",
     "blue": "Blue",

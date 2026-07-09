@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/routing';
+import { skinSlug } from '@/lib/skin_slugs';
 import {
   Skin,
   THEME_TAGS,
@@ -1226,9 +1228,12 @@ function GunCard({
         <div className={`text-xs font-medium mb-1 ${rarityColor}`}>
           {skin.rarity}
         </div>
-        <div className="text-sm font-semibold leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
+        <Link
+          href={`/skin/${skinSlug(skin.name)}`}
+          className="block text-sm font-semibold leading-tight mb-2 line-clamp-2 min-h-[2.5rem] hover:text-orange-400 transition-colors"
+        >
           {skin.name}
-        </div>
+        </Link>
         <WearPicker skin={skin} onPick={onSwap} />
       </div>
 

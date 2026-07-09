@@ -105,6 +105,19 @@
     "backHome": "← На главную LoadoutLab",
     "readyTitle": "Готовые лаудауты"
   },
+  "skinPage": {
+    "metaTitle": "{name} — Цены и дешёвые аналоги | LoadoutLab",
+    "metaDescription": "{name}: актуальные цены Skinport от {min}€ до {max}€ во всех качествах, а также визуально похожие скины в разы дешевле.",
+    "backHome": "← LoadoutLab",
+    "palette": "Цвета:",
+    "fromWear": "от ({wear})",
+    "buyNow": "Купить на Skinport →",
+    "buildWith": "Собрать лаудаут",
+    "pricesHeading": "Цены по качеству",
+    "inStock": "{count} лотов",
+    "lookalikesHeading": "Дешёвые аналоги",
+    "familyHeading": "{finish} на другом оружии"
+  },
   "colors": {
     "red": "Красный",
     "blue": "Синий",
