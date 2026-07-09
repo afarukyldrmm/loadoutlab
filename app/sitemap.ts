@@ -29,6 +29,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 0.9,
     });
+    entries.push({
+      url: `${BASE}${prefix}/trending`,
+      changeFrequency: 'daily',
+      priority: 0.9,
+    });
     for (const slug of allSeoSlugs()) {
       entries.push({
         url: `${BASE}${prefix}/loadout/${slug}`,

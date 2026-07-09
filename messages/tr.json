@@ -105,6 +105,20 @@
     "backHome": "← LoadoutLab ana sayfa",
     "readyTitle": "Hazır loadout'lar"
   },
+  "trending": {
+    "metaTitle": "Çok Satan CS2 Skinleri — İşlem Hacmi & Fiyat Trendleri | LoadoutLab",
+    "metaDescription": "Şu an en çok işlem gören CS2 skinleri: Skinport'ta 7 günlük ve 24 saatlik satış hacmi, trade fikirleri için fiyat trend göstergeleriyle.",
+    "title": "Çok Satanlar",
+    "intro": "Skinport'ta şu an en çok el değiştiren skinler. Hacim gerçekleşen satışları gösterir; trend, 7 günlük ortalama fiyatı 30 günlük ortalamayla karşılaştırır — trade öncesi ivmeyi yakalamak için.",
+    "updated": "Veri güncellemesi: {date}",
+    "empty": "Satış verisi toplanıyor — bir sonraki fiyat güncellemesinden sonra tekrar bak.",
+    "colItem": "Skin",
+    "colSales7d": "Satış (7g)",
+    "colSales24h": "Satış (24s)",
+    "colTrend": "Trend",
+    "colPrice": "Fiyat",
+    "navLabel": "Çok Satanlar"
+  },
   "dupes": {
     "metaTitle": "Ucuz CS2 Skin Alternatifleri — Pahalı Skinlerin Ucuz Benzerleri | LoadoutLab",
     "metaDescription": "Pahalı CS2 skininin görünümünü çok daha ucuza ister misin? Vulcan, Case Hardened, Asiimov ve daha fazlasının görsel benzerleri — canlı fiyatlarla.",

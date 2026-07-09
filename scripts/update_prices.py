@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SKINS_FILE = ROOT / "public/data/skins.json"
 POPULAR_FILE = ROOT / "public/data/skins_popular.json"
 META_FILE = ROOT / "public/data/meta.json"
+SALES_FILE = ROOT / "public/data/sales.json"
 
 API_URL = "https://api.skinport.com/v1/items"
 PARAMS = {"app_id": 730, "currency": "EUR", "tradable": 0}
@@ -108,6 +109,63 @@ def total_qty(skin: dict) -> int:
     return sum(w["quantity"] for w in skin["wears"])
 
 
+def fetch_sales(known_names: set[str]) -> dict:
+    """
+    v21: Skinport /v1/sales/history — satış hacmi ve fiyat trendi.
+    Wear bazlı kayıtlar isim bazında toplanır:
+      volume_24h, volume_7d, trend_pct (7g ort. vs 30g ort., hacim ağırlıklı)
+    Sadece veritabanımızdaki skinler tutulur (dosya küçük kalsın).
+    """
+    print("Skinport satış geçmişi çekiliyor...")
+    resp = requests.get(
+        "https://api.skinport.com/v1/sales/history",
+        params={"app_id": 730, "currency": "EUR"},
+        headers={"Accept-Encoding": "br"},
+        timeout=180,
+    )
+    resp.raise_for_status()
+    rows = resp.json()
+    print(f"  {len(rows)} satış kaydı geldi")
+
+    agg: dict[str, dict] = {}
+    for r in rows:
+        mhn = r.get("market_hash_name", "")
+        if mhn.startswith("StatTrak") or mhn.startswith("Souvenir"):
+            continue
+        m = WEAR_RE.match(mhn)
+        base = m.group(1) if m else mhn
+        if base not in known_names:
+            continue
+        d7 = r.get("last_7_days") or {}
+        d30 = r.get("last_30_days") or {}
+        d24 = r.get("last_24_hours") or {}
+        a = agg.setdefault(
+            base, {"v24": 0, "v7": 0, "s7": 0.0, "w7": 0, "s30": 0.0, "w30": 0}
+        )
+        a["v24"] += int(d24.get("volume") or 0)
+        v7 = int(d7.get("volume") or 0)
+        v30 = int(d30.get("volume") or 0)
+        a["v7"] += v7
+        if d7.get("avg") and v7:
+            a["s7"] += float(d7["avg"]) * v7
+            a["w7"] += v7
+        if d30.get("avg") and v30:
+            a["s30"] += float(d30["avg"]) * v30
+            a["w30"] += v30
+
+    out: dict[str, list] = {}
+    for name, a in agg.items():
+        trend = None
+        if a["w7"] and a["w30"]:
+            avg7 = a["s7"] / a["w7"]
+            avg30 = a["s30"] / a["w30"]
+            if avg30 > 0:
+                trend = round((avg7 - avg30) / avg30 * 100, 1)
+        # kompakt format: [24s hacim, 7g hacim, trend %]
+        out[name] = [a["v24"], a["v7"], trend]
+    return out
+
+
 def main() -> None:
     skins = json.loads(SKINS_FILE.read_text(encoding="utf-8"))
     print(f"Mevcut veri: {len(skins)} skin")
@@ -144,6 +202,23 @@ def main() -> None:
         for s in result
         if s["entry_price"] >= POPULAR_MIN_PRICE and total_qty(s) >= POPULAR_MIN_QTY
     ]
+
+    # v21: satış hacmi + trend verisi (ayrı istek — rate limit içinde)
+    try:
+        sales = fetch_sales({s["name"] for s in result})
+        SALES_FILE.write_text(
+            json.dumps(
+                {
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "items": sales,
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        print(f"  sales.json: {len(sales)} skin için hacim+trend yazıldı")
+    except Exception as e:  # satış verisi alınamazsa fiyat güncellemesi bozulmasın
+        print(f"  UYARI: satış verisi alınamadı, atlandı ({e})")
 
     SKINS_FILE.write_text(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"

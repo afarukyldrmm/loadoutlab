@@ -105,6 +105,20 @@
     "backHome": "← LoadoutLab home",
     "readyTitle": "Ready-made loadouts"
   },
+  "trending": {
+    "metaTitle": "Hot Selling CS2 Skins — Trading Volume & Price Trends | LoadoutLab",
+    "metaDescription": "The most traded CS2 skins right now: 7-day and 24-hour sales volume on Skinport, with price trend indicators for trading ideas.",
+    "title": "Hot Selling Skins",
+    "intro": "The most traded skins on Skinport right now. Volume shows real completed sales; the trend compares the 7-day average price against the 30-day average — useful for spotting momentum before you trade.",
+    "updated": "Data updated: {date}",
+    "empty": "Sales data is being collected — check back after the next price update.",
+    "colItem": "Skin",
+    "colSales7d": "Sales (7d)",
+    "colSales24h": "Sales (24h)",
+    "colTrend": "Trend",
+    "colPrice": "Price",
+    "navLabel": "Hot Selling"
+  },
   "dupes": {
     "metaTitle": "Cheap CS2 Skin Alternatives — Lookalikes for a Fraction of the Price | LoadoutLab",
     "metaDescription": "Want the look of an expensive CS2 skin without the price tag? Visually similar budget alternatives to Vulcan, Case Hardened, Asiimov and more — with live prices.",

@@ -102,6 +102,12 @@ export default async function HomePage({
           </div>
           <div className="flex items-center gap-4">
             <Link
+              href="/trending"
+              className="text-xs font-medium text-orange-400 hover:text-orange-300 transition-colors hidden sm:block"
+            >
+              {t('trending.navLabel')}
+            </Link>
+            <Link
               href="/cheap-alternatives"
               className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors hidden sm:block"
             >
