@@ -1,4 +1,5 @@
 import '../globals.css';
+import { Inter } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import {
   getMessages,
@@ -7,6 +8,12 @@ import {
 } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
+
+// v18: profesyonel tipografi — Inter (latin + kiril desteği)
+const inter = Inter({
+  subsets: ['latin', 'latin-ext', 'cyrillic'],
+  display: 'swap',
+});
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -37,7 +44,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <body>
+      <body className={inter.className}>
         <NextIntlClientProvider messages={messages}>
           {children}
         </NextIntlClientProvider>

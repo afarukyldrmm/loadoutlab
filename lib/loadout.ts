@@ -379,19 +379,21 @@ const COLOR_TAGS = [
 
 // Birbiriyle uyumlu / yakın renk grupları
 // "Esnek" modda kullanılır: kullanıcı mavi seçtiğinde mor da kabul edilir gibi
+// v18: zayıf çiftler temizlendi (gold↔white, brown↔gold, gray↔white) —
+// "keskin olmayan" renk sonuçlarının ana nedeni bu gevşek komşuluklardı.
 export const COLOR_NEIGHBORS: Record<string, string[]> = {
-  red:    ['red', 'orange', 'pink'],
-  orange: ['orange', 'red', 'gold', 'yellow'],
-  gold:   ['gold', 'orange', 'yellow', 'white'],
-  pink:   ['pink', 'red', 'purple'],
-  purple: ['purple', 'pink', 'blue'],
+  red:    ['red', 'orange'],
+  orange: ['orange', 'red', 'yellow'],
+  gold:   ['gold', 'yellow'],
+  pink:   ['pink', 'purple'],
+  purple: ['purple', 'pink'],
   blue:   ['blue', 'purple'],
   green:  ['green'],
   black:  ['black', 'gray'],
-  white:  ['white', 'gold', 'gray'],
-  yellow: ['yellow', 'gold', 'orange'],
-  brown:  ['brown', 'gold', 'orange'],
-  gray:   ['gray', 'black', 'white'],
+  white:  ['white', 'gray'],
+  yellow: ['yellow', 'gold'],
+  brown:  ['brown', 'orange'],
+  gray:   ['gray', 'black'],
 };
 
 /**
@@ -451,18 +453,23 @@ export function getEffectiveTags(skin: Skin): string[] {
  * @param skin   — kontrol edilen skin
  * @param colors — kullanıcının seçtiği renkler (boş array = renk filtresi yok)
  * @param styles — kullanıcının seçtiği stiller/desenler (boş array = stil filtresi yok)
- * @param strict — true: sadece ilk renk dominant kabul; false: ilk 2 renk + komşular
+ * @param strict — v18 üç kademe:
+ *   true      → sadece 1. (dominant) renk, tam eşleşme
+ *   'second'  → ilk 2 renk, yine TAM eşleşme (komşu yok)
+ *   false     → ilk 2 renk + komşu tonlar (en gevşek, son çare)
  *
  * Kural: skin uygun olmak için
  *   - colors boş değilse: dominant rengi seçilen renklerden BİRİ olmalı
  *   - styles boş değilse: tüm stil/desen tag'leri set'i seçili stillerin EN AZ BİRİSİYLE kesişmeli
  *   - her iki filtre de geçilmeli (AND mantığı)
  */
+export type ColorStrictness = boolean | 'second';
+
 export function matchesThemeFilter(
   skin: Skin,
   colors: string[],
   styles: string[],
-  strict: boolean = true,
+  strict: ColorStrictness = true,
 ): boolean {
   const tags = getEffectiveTags(skin);
   const colorsOnly = tags.filter((t) => COLOR_TAGS.includes(t));
@@ -471,10 +478,12 @@ export function matchesThemeFilter(
   // Renk filtresi
   if (colors.length > 0) {
     if (colorsOnly.length === 0) return false;
-    const dominant = strict ? [colorsOnly[0]] : colorsOnly.slice(0, 2);
+    const dominant =
+      strict === true ? [colorsOnly[0]] : colorsOnly.slice(0, 2);
     let colorMatch = false;
     for (const wanted of colors) {
-      const acceptable = strict ? [wanted] : (COLOR_NEIGHBORS[wanted] ?? [wanted]);
+      const acceptable =
+        strict === false ? (COLOR_NEIGHBORS[wanted] ?? [wanted]) : [wanted];
       if (dominant.some((c) => acceptable.includes(c))) {
         colorMatch = true;
         break;
@@ -627,7 +636,7 @@ export function recommendLoadout(
   const candidatesFor = (
     weaponName: string,
     applyTheme: boolean,
-    strict: boolean = true,
+    strict: ColorStrictness = true,
   ): Skin[] => {
     return allSkins.filter((s) => {
       if (s.weapon !== weaponName) return false;
@@ -642,16 +651,17 @@ export function recommendLoadout(
     });
   };
 
-  // v11: Deneme sırası (kademeli gevşetme).
-  // 'auto' → önce sıkı, sonuç yoksa esnek. true/false → tek mod.
+  // v18: Deneme sırası (3 kademeli gevşetme).
+  // 'auto' → tam (1. renk) → 2. renk tam → komşu ton. true/false → tek mod.
   // respectThemeStrictly=false ise en sona temasız deneme de eklenir (v9 davranışı).
-  type Attempt = { useTheme: boolean; strict: boolean };
+  type Attempt = { useTheme: boolean; strict: ColorStrictness };
   const buildAttempts = (): Attempt[] => {
     if (!hasThemeFilter) return [{ useTheme: false, strict: true }];
     const themed: Attempt[] =
       strictColor === 'auto'
         ? [
             { useTheme: true, strict: true },
+            { useTheme: true, strict: 'second' },
             { useTheme: true, strict: false },
           ]
         : [{ useTheme: true, strict: strictColor }];
@@ -699,7 +709,8 @@ export function recommendLoadout(
         pick = sorted[Math.floor(rand() * Math.min(2, sorted.length))];
       }
       pickedWithTheme = attempt.useTheme;
-      pickedRelaxed = attempt.useTheme && !attempt.strict && strictColor === 'auto';
+      pickedRelaxed =
+        attempt.useTheme && attempt.strict !== true && strictColor === 'auto';
       break;
     }
 
@@ -727,7 +738,9 @@ export function recommendLoadout(
       // esnek upgrade sadece zaten esnek seçilmiş silahlarda denenir.
       const upgradeAttempts = buildAttempts().filter(
         (a) =>
-          !a.useTheme || a.strict || relaxedWeapons.includes(weaponName),
+          !a.useTheme ||
+          a.strict === true ||
+          relaxedWeapons.includes(weaponName),
       );
       for (const attempt of upgradeAttempts) {
         const better = candidatesFor(weaponName, attempt.useTheme, attempt.strict)
@@ -825,20 +838,22 @@ export function findAlternatives(
     return rank(baseCandidates).slice(0, maxResults);
   }
 
-  // v11: kademeli — önce tam eşleşenler, liste dolmazsa yakın tonlarla tamamla
+  // v18: 3 kademeli — tam eşleşenler → 2. renk tam → komşu tonlar
   if (strictColor === 'auto') {
-    const strictMatches = baseCandidates.filter((s) =>
-      matchesThemeFilter(s, activeColors, activeStyles, true),
-    );
-    const results = rank(strictMatches).slice(0, maxResults);
-    if (results.length < maxResults) {
-      const strictIds = new Set(results.map((s) => s.id));
-      const relaxedOnly = baseCandidates.filter(
+    const results: Skin[] = [];
+    const seen = new Set<string>();
+    for (const stage of [true, 'second', false] as ColorStrictness[]) {
+      if (results.length >= maxResults) break;
+      const matches = baseCandidates.filter(
         (s) =>
-          !strictIds.has(s.id) &&
-          matchesThemeFilter(s, activeColors, activeStyles, false),
+          !seen.has(s.id) &&
+          matchesThemeFilter(s, activeColors, activeStyles, stage),
       );
-      results.push(...rank(relaxedOnly).slice(0, maxResults - results.length));
+      for (const s of rank(matches).slice(0, maxResults - results.length)) {
+        results.push(s);
+        seen.add(s.id);
+      }
+      matches.forEach((s) => seen.add(s.id));
     }
     return results;
   }
@@ -1090,6 +1105,12 @@ export function themeMatchingSkins(
     .sort(byPrice);
   // mode=true → sadece tam eşleşme; yakın ton fallback yok
   if (strictMatches.length > 0 || mode === true) return strictMatches;
+
+  // v18: önce 2. renk tam eşleşmesi, o da boşsa komşu tonlar
+  const secondMatches = inSlot
+    .filter((s) => matchesThemeFilter(s, colors, [], 'second'))
+    .sort(byPrice);
+  if (secondMatches.length > 0) return secondMatches;
 
   return inSlot
     .filter((s) => matchesThemeFilter(s, colors, [], false))

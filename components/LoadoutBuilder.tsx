@@ -430,7 +430,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         {/* Bütçe */}
         <div className="mb-6">
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm text-gray-400">{t('prefs.budget')}</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              {t('prefs.budget')}
+            </label>
             <span className="text-2xl font-bold text-orange-500">
               {budget.toLocaleString('tr-TR')}€
             </span>
@@ -464,7 +466,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         {/* SİLAHLAR */}
         <div className="mb-6">
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm text-gray-400">{t('prefs.weapons')}</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              {t('prefs.weapons')}
+            </label>
             <span className="text-xs text-gray-600">
               {t('prefs.weaponsSelected', { count: enabledGuns.size })}
             </span>
@@ -563,29 +567,23 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           <div className="flex gap-2 flex-wrap mt-3">
             <button
               onClick={() => setIncludeKnife((v) => !v)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 includeKnife
                   ? 'bg-orange-500 text-white'
                   : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
               }`}
             >
-              <span>🔪</span>
-              <span>
-                {includeKnife ? t('prefs.knifeIncluded') : t('prefs.knifeAdd')}
-              </span>
+              {includeKnife ? t('prefs.knifeIncluded') : t('prefs.knifeAdd')}
             </button>
             <button
               onClick={() => setIncludeGlove((v) => !v)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 includeGlove
                   ? 'bg-orange-500 text-white'
                   : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
               }`}
             >
-              <span>🧤</span>
-              <span>
-                {includeGlove ? t('prefs.gloveIncluded') : t('prefs.gloveAdd')}
-              </span>
+              {includeGlove ? t('prefs.gloveIncluded') : t('prefs.gloveAdd')}
             </button>
           </div>
 
@@ -685,7 +683,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         {/* KALİTE (WEAR/FLOAT) FİLTRESİ — v12 */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm text-gray-400">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
               {t('prefs.wearLabel')}{' '}
               {wearFilter.length > 0 && (
                 <span className="text-orange-400 ml-1">
@@ -735,7 +733,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         {/* RENK FİLTRESİ — çoklu seçim, kademeli eşleşme */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm text-gray-400">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
               {t('prefs.colorLabel')}{' '}
               {hasColorFilter && (
                 <span className="text-orange-400 ml-1">
@@ -803,7 +801,6 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           onClick={() => setShowAdvanced((v) => !v)}
           className="text-xs text-gray-500 hover:text-orange-400 transition-colors flex items-center gap-1.5"
         >
-          <span>⚙️</span>
           <span>
             {t('prefs.collectionsToggle')} {showAdvanced ? '▲' : '▼'}
           </span>
@@ -956,7 +953,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
               {includeKnife && (
                 <SlotGallery
                   title={t('gallery.knife')}
-                  icon="🔪"
+                  icon=""
                   options={knifeOptions}
                   selected={effectiveKnife}
                   hasColorFilter={hasColorFilter}
@@ -967,7 +964,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
               {includeGlove && (
                 <SlotGallery
                   title={t('gallery.glove')}
-                  icon="🧤"
+                  icon=""
                   options={gloveOptions}
                   selected={effectiveGlove}
                   hasColorFilter={hasColorFilter}
@@ -1114,7 +1111,6 @@ function GunCard({
           {weaponName}
         </div>
         <div className="flex-1 flex flex-col items-center justify-center text-center py-4 px-2">
-          <div className="text-3xl mb-2">🎨</div>
           <div className="text-sm font-semibold text-amber-300 mb-1">
             {t('noColorTitle', { weapon: weaponName })}
           </div>
@@ -1148,7 +1144,6 @@ function GunCard({
           {weaponName}
         </div>
         <div className="flex-1 flex flex-col items-center justify-center text-center py-4 px-2">
-          <div className="text-3xl mb-2">⚠️</div>
           <div className="text-sm font-semibold text-gray-200 mb-1">
             {t('budgetShort')}
           </div>
@@ -1410,7 +1405,7 @@ function SlotGallery({
     <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm font-semibold flex items-center gap-2">
-          <span>{icon}</span>
+          {icon && <span>{icon}</span>}
           <span>{title}</span>
           <span className="text-xs text-gray-600 font-normal">
             {t('gallery.options', { count: options.length })}

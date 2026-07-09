@@ -43,7 +43,7 @@
     "collectionsEmpty": "No matching collection.",
     "collectionTitle": "{count} weapons · cheapest {price}€",
     "regenerate": "↻ Regenerate",
-    "copyLink": "🔗 Copy link",
+    "copyLink": "Copy link",
     "copied": "✓ Link copied!"
   },
   "total": {
@@ -52,7 +52,7 @@
     "remaining": "Remaining"
   },
   "warnings": {
-    "unmatched": "🎨 No matching skin in your color for {count} weapons",
+    "unmatched": "No matching skin in your color for {count} weapons",
     "unmatchedHint": "Even near tones couldn't be found for these weapons. Increase the budget, add another color or remove them.",
     "nothingSelected": "Select at least one weapon, knife or gloves."
   },
@@ -73,7 +73,7 @@
     "hideAlts": "↑ Hide alternatives",
     "showAlts": "↔ Other options",
     "noAlts": "No alternatives found",
-    "lookalikes": "💎 Cheap lookalikes",
+    "lookalikes": "Cheap lookalikes",
     "hideLookalikes": "↑ Hide lookalikes",
     "similarity": "{pct}% match",
     "noLookalikes": "No cheaper lookalikes found"

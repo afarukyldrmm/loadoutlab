@@ -43,7 +43,7 @@
     "collectionsEmpty": "Eşleşen koleksiyon yok.",
     "collectionTitle": "{count} silah · en ucuz {price}€",
     "regenerate": "↻ Yeniden öner",
-    "copyLink": "🔗 Linki kopyala",
+    "copyLink": "Linki kopyala",
     "copied": "✓ Link kopyalandı!"
   },
   "total": {
@@ -52,7 +52,7 @@
     "remaining": "Kalan"
   },
   "warnings": {
-    "unmatched": "🎨 {count} silah için seçtiğin renkte uygun skin yok",
+    "unmatched": "{count} silah için seçtiğin renkte uygun skin yok",
     "unmatchedHint": "Bu silahlar için yakın tonda bile skin bulunamadı. Bütçeyi artır, başka renk ekle veya o silahları çıkar.",
     "nothingSelected": "En az bir silah, bıçak veya eldiven seç."
   },
@@ -73,7 +73,7 @@
     "hideAlts": "↑ Alternatifleri gizle",
     "showAlts": "↔ Diğer seçenekler",
     "noAlts": "Alternatif bulunamadı",
-    "lookalikes": "💎 Ucuza benzeri",
+    "lookalikes": "Ucuza benzeri",
     "hideLookalikes": "↑ Benzerleri gizle",
     "similarity": "%{pct} benzer",
     "noLookalikes": "Daha ucuz benzeri bulunamadı"
