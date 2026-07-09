@@ -1,1 +1,40 @@
+name: Update skin prices
 
+on:
+  schedule:
+    # Her Pazartesi ve Persembe 06:00 UTC — haftada 2 kez
+    - cron: '0 6 * * 1,4'
+  workflow_dispatch: {} # Actions sekmesinden elle de tetiklenebilir
+
+permissions:
+  contents: write
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests brotli
+
+      - name: Update prices from Skinport
+        run: python scripts/update_prices.py
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "loadoutlab-bot"
+          git config user.email "actions@github.com"
+          git add public/data/
+          if git diff --cached --quiet; then
+            echo "Fiyat degisikligi yok, commit atlaniyor."
+          else
+            git commit -m "chore: haftalik fiyat guncellemesi (Skinport)"
+            git push
+          fi
