@@ -850,6 +850,96 @@ export function findAlternatives(
 }
 
 // ============================================================
+// UCUZ BENZERİ MOTORU (v17) — LoadoutLab'in imza özelliği
+// ============================================================
+
+export interface Lookalike {
+  skin: Skin;
+  /** 0-100 görsel benzerlik skoru */
+  similarity: number;
+  /** Hedefe göre tasarruf yüzdesi (0-100) */
+  savingsPct: number;
+}
+
+/**
+ * Bir skinin "görsel ikizi ama çok daha ucuz" alternatiflerini bulur.
+ *
+ * Benzerlik skoru:
+ *  - Dominant renk eşleşmesi (pozisyon ağırlıklı: 1. renk 50p, 2. renk 20p,
+ *    çapraz pozisyon 12p, komşu renk yarım puan)
+ *  - Aynı pattern ailesi (Fade, Case Hardened...) +25p
+ *  - Ortak stil tag'leri (+5p, en fazla 15p)
+ *
+ * Filtreler:
+ *  - Fiyat, hedefin en fazla %40'ı (gerçekten "ucuz" olmalı)
+ *  - Aynı silah modeli (slot'a takas edilebilir olsun diye)
+ *  - Minimum %35 benzerlik
+ */
+export function findLookalikes(
+  allSkins: Skin[],
+  target: Skin,
+  options: { maxResults?: number; maxPriceRatio?: number; sameWeapon?: boolean } = {}
+): Lookalike[] {
+  const { maxResults = 6, maxPriceRatio = 0.4, sameWeapon = true } = options;
+
+  const targetTags = getEffectiveTags(target);
+  const targetColors = targetTags.filter((t) => COLOR_TAGS.includes(t));
+  const targetStyles = targetTags.filter((t) => !COLOR_TAGS.includes(t));
+  const targetPattern = detectPattern(target.name);
+  const priceCap = target.entry_price * maxPriceRatio;
+
+  const scored: Lookalike[] = [];
+  for (const s of allSkins) {
+    if (s.id === target.id || s.name === target.name) continue;
+    if (sameWeapon && s.weapon !== target.weapon) continue;
+    if (s.entry_price <= 0 || s.entry_price > priceCap) continue;
+
+    const tags = getEffectiveTags(s);
+    const colors = tags.filter((t) => COLOR_TAGS.includes(t));
+    const styles = tags.filter((t) => !COLOR_TAGS.includes(t));
+
+    let score = 0;
+
+    // Renk: pozisyon ağırlıklı eşleşme
+    const posWeight = [50, 20, 8];
+    targetColors.slice(0, 3).forEach((tc, ti) => {
+      const ci = colors.indexOf(tc);
+      if (ci === -1) {
+        // komşu renk yarım puan (sadece dominant pozisyonlar için)
+        if (ti < 2 && colors[ti] && (COLOR_NEIGHBORS[tc] ?? []).includes(colors[ti])) {
+          score += posWeight[ti] / 2;
+        }
+        return;
+      }
+      score += ci === ti ? posWeight[ti] : 12;
+    });
+
+    // Pattern ailesi
+    if (targetPattern && detectPattern(s.name) === targetPattern) score += 25;
+
+    // Stil tag'leri
+    const styleOverlap = styles.filter((x) => targetStyles.includes(x)).length;
+    score += Math.min(15, styleOverlap * 5);
+
+    const similarity = Math.min(100, Math.round(score));
+    if (similarity < 35) continue;
+
+    scored.push({
+      skin: s,
+      similarity,
+      savingsPct: Math.round((1 - s.entry_price / target.entry_price) * 100),
+    });
+  }
+
+  return scored
+    .sort(
+      (a, b) =>
+        b.similarity - a.similarity || a.skin.entry_price - b.skin.entry_price
+    )
+    .slice(0, maxResults);
+}
+
+// ============================================================
 // AFFILIATE & TEMA TAGLERİ
 // ============================================================
 

@@ -72,7 +72,11 @@
     "buy": "Satın al →",
     "hideAlts": "↑ Alternatifleri gizle",
     "showAlts": "↔ Diğer seçenekler",
-    "noAlts": "Alternatif bulunamadı"
+    "noAlts": "Alternatif bulunamadı",
+    "lookalikes": "💎 Ucuza benzeri",
+    "hideLookalikes": "↑ Benzerleri gizle",
+    "similarity": "%{pct} benzer",
+    "noLookalikes": "Daha ucuz benzeri bulunamadı"
   },
   "gallery": {
     "knife": "Bıçak",

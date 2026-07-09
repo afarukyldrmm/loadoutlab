@@ -17,6 +17,7 @@ import {
   recommendLoadout,
   affiliateUrl,
   findAlternatives,
+  findLookalikes,
   listSkinFamilies,
   skinsInFamily,
   themeMatchingSkins,
@@ -1087,6 +1088,7 @@ function GunCard({
 }: GunCardProps) {
   const t = useTranslations('card');
   const [showAlts, setShowAlts] = useState(false);
+  const [showLookalikes, setShowLookalikes] = useState(false);
 
   const alternatives = useMemo(() => {
     if (!skin || !showAlts) return [];
@@ -1097,6 +1099,12 @@ function GunCard({
       maxResults: 8,
     });
   }, [allSkins, skin, themeColors, exactColorsOnly, showAlts]);
+
+  // v17: Ucuz Benzeri — görsel ikiz ama çok daha ucuz
+  const lookalikes = useMemo(() => {
+    if (!skin || !showLookalikes) return [];
+    return findLookalikes(allSkins, skin);
+  }, [allSkins, skin, showLookalikes]);
 
   // Renk yüzünden boş slot
   if (!skin && isThemeUnmatched) {
@@ -1246,12 +1254,70 @@ function GunCard({
         </a>
       </div>
 
-      <button
-        onClick={() => setShowAlts((v) => !v)}
-        className="text-xs text-gray-500 hover:text-orange-400 transition-colors w-full text-center mt-1 py-1"
-      >
-        {showAlts ? t('hideAlts') : t('showAlts')}
-      </button>
+      <div className="flex gap-1 mt-1">
+        <button
+          onClick={() => {
+            setShowAlts((v) => !v);
+            setShowLookalikes(false);
+          }}
+          className="flex-1 text-xs text-gray-500 hover:text-orange-400 transition-colors text-center py-1"
+        >
+          {showAlts ? t('hideAlts') : t('showAlts')}
+        </button>
+        <button
+          onClick={() => {
+            setShowLookalikes((v) => !v);
+            setShowAlts(false);
+          }}
+          className={`flex-1 text-xs transition-colors text-center py-1 ${
+            showLookalikes
+              ? 'text-emerald-300'
+              : 'text-emerald-500/80 hover:text-emerald-300'
+          }`}
+        >
+          {showLookalikes ? t('hideLookalikes') : t('lookalikes')}
+        </button>
+      </div>
+
+      {showLookalikes && lookalikes.length > 0 && (
+        <div className="mt-2 space-y-1 max-h-64 overflow-y-auto">
+          {lookalikes.map(({ skin: alt, similarity, savingsPct }) => (
+            <button
+              key={alt.id}
+              onClick={() => {
+                onSwap(alt);
+                setShowLookalikes(false);
+              }}
+              className="w-full flex items-center gap-2 p-2 hover:bg-[var(--bg-tertiary)] rounded-md transition-colors text-left"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={alt.image}
+                alt={alt.name}
+                className="w-10 h-10 object-contain bg-black rounded flex-shrink-0"
+                loading="lazy"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-medium truncate">
+                  {alt.name}
+                </div>
+                <div className="text-[10px] text-emerald-400">
+                  {t('similarity', { pct: similarity })} · -{savingsPct}%
+                </div>
+              </div>
+              <div className="text-xs font-bold text-orange-500 flex-shrink-0">
+                {alt.entry_price.toFixed(2)}€
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showLookalikes && lookalikes.length === 0 && (
+        <div className="text-xs text-gray-600 mt-2 text-center py-3">
+          {t('noLookalikes')}
+        </div>
+      )}
 
       {showAlts && alternatives.length > 0 && (
         <div className="mt-2 space-y-1 max-h-64 overflow-y-auto">

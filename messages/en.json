@@ -72,7 +72,11 @@
     "buy": "Buy →",
     "hideAlts": "↑ Hide alternatives",
     "showAlts": "↔ Other options",
-    "noAlts": "No alternatives found"
+    "noAlts": "No alternatives found",
+    "lookalikes": "💎 Cheap lookalikes",
+    "hideLookalikes": "↑ Hide lookalikes",
+    "similarity": "{pct}% match",
+    "noLookalikes": "No cheaper lookalikes found"
   },
   "gallery": {
     "knife": "Knife",
