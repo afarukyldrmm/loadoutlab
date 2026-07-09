@@ -42,7 +42,9 @@
     "collectionsHint": "Bir koleksiyon seçince o desenin tüm silah versiyonları (bütçe ve filtre bağımsız) gösterilir.",
     "collectionsEmpty": "Eşleşen koleksiyon yok.",
     "collectionTitle": "{count} silah · en ucuz {price}€",
-    "regenerate": "↻ Yeniden öner"
+    "regenerate": "↻ Yeniden öner",
+    "copyLink": "🔗 Linki kopyala",
+    "copied": "✓ Link kopyalandı!"
   },
   "total": {
     "label": "Toplam Tahmini",

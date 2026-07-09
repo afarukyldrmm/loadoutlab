@@ -42,7 +42,9 @@
     "collectionsHint": "Selecting a collection shows every weapon version of that pattern (independent of budget and filters).",
     "collectionsEmpty": "No matching collection.",
     "collectionTitle": "{count} weapons · cheapest {price}€",
-    "regenerate": "↻ Regenerate"
+    "regenerate": "↻ Regenerate",
+    "copyLink": "🔗 Copy link",
+    "copied": "✓ Link copied!"
   },
   "total": {
     "label": "Estimated Total",

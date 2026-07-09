@@ -56,6 +56,11 @@ const WEAPON_SUGGESTIONS: Record<string, string[]> = {
 
 const COLOR_CHIPS = THEME_TAGS.filter((t) => t.kind === 'color');
 
+// v15: URL paylaşım linki için kısa wear kodu → tam ad
+const WEAR_FROM_SHORT: Record<string, string> = Object.fromEntries(
+  Object.entries(WEAR_SHORT).map(([full, short]) => [short, full])
+);
+
 // Renk chip'i için küçük renk noktası
 const COLOR_SWATCH: Record<string, string> = {
   red: '#ef4444',
@@ -98,6 +103,83 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     () => applyWearFilter(allSkins, wearFilter),
     [allSkins, wearFilter]
   );
+
+  // v15: paylaşım linki — kopyalandı geri bildirimi
+  const [copied, setCopied] = useState(false);
+
+  // v15: sayfa açılışında URL'deki seçimleri yükle (paylaşılan link desteği)
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const b = Number(p.get('b'));
+    if (b >= 20 && b <= 10000) setBudget(b);
+    const c = p.get('c');
+    if (c) {
+      const colors = c
+        .split(',')
+        .filter((x) => COLOR_CHIPS.some((chip) => chip.id === x));
+      if (colors.length) setThemeColors(colors);
+    }
+    const w = p.get('w');
+    if (w) {
+      const guns = w.split(',').filter((n) => n in WEAPON_BY_NAME);
+      if (guns.length) setEnabledGuns(new Set(guns));
+    }
+    if (p.get('k') === '0') setIncludeKnife(false);
+    if (p.get('g') === '0') setIncludeGlove(false);
+    const q = p.get('q');
+    if (q) {
+      const wears = q
+        .split(',')
+        .map((s) => WEAR_FROM_SHORT[s])
+        .filter(Boolean);
+      if (wears.length) setWearFilter(wears);
+    }
+    if (p.get('x') === '1') setExactColorsOnly(true);
+    const s = Number(p.get('s'));
+    if (Number.isInteger(s) && s > 0) setRegenKey(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // v15: seçimleri URL'e yaz — adres çubuğu her an paylaşılabilir
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (budget !== 500) p.set('b', String(budget));
+    if (themeColors.length) p.set('c', themeColors.join(','));
+    const gunsNow = Array.from(enabledGuns).sort().join(',');
+    const gunsDefault = [...DEFAULT_GUNS].sort().join(',');
+    if (gunsNow !== gunsDefault) p.set('w', gunsNow);
+    if (!includeKnife) p.set('k', '0');
+    if (!includeGlove) p.set('g', '0');
+    if (wearFilter.length)
+      p.set('q', wearFilter.map((w) => WEAR_SHORT[w]).join(','));
+    if (exactColorsOnly) p.set('x', '1');
+    if (regenKey > 0) p.set('s', String(regenKey));
+    const qs = p.toString();
+    window.history.replaceState(
+      null,
+      '',
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    );
+  }, [
+    budget,
+    themeColors,
+    enabledGuns,
+    includeKnife,
+    includeGlove,
+    wearFilter,
+    exactColorsOnly,
+    regenKey,
+  ]);
+
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard izni yoksa sessizce geç
+    }
+  }
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [showAllWeapons, setShowAllWeapons] = useState(false);
@@ -763,7 +845,17 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         </div>
         )}
 
-        <div className="flex justify-end mt-4">
+        <div className="flex justify-end gap-2 mt-4">
+          <button
+            onClick={copyShareLink}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              copied
+                ? 'bg-green-600 text-white'
+                : 'bg-[var(--bg-tertiary)] hover:bg-gray-700 text-white'
+            }`}
+          >
+            {copied ? t('prefs.copied') : t('prefs.copyLink')}
+          </button>
           <button
             onClick={regenerate}
             className="px-4 py-1.5 bg-[var(--bg-tertiary)] hover:bg-gray-700 text-white text-sm font-medium rounded-md transition-colors"
