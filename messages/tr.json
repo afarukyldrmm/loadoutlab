@@ -90,6 +90,17 @@
     "stats": "{count} silah versiyonu · en ucuz <orange>{min}€</orange> · tümü <gray>{total}€</gray>",
     "hint": "Bu desenin tüm silahları — bütçe ve renk filtrelerinden bağımsız."
   },
+  "seo": {
+    "title": "{budget}€ Altı {color} CS2 Loadout",
+    "metaDescription": "{budget}€ altı hazır {color} CS2 skin loadout'u — AK-47, M4A4, AWP, Desert Eagle, bıçak ve eldiven. Canlı Skinport fiyatları, haftada iki kez güncellenir.",
+    "intro": "{budget}€ altında hazır {color} CS2 skin loadout'u. Fiyatlar Skinport'tan canlı çekilir ve haftada iki kez güncellenir — aşağıdaki her parça doğrudan ilana gider.",
+    "total": "Toplam",
+    "openBuilder": "Builder'da özelleştir →",
+    "otherBudgets": "Diğer bütçelerde {color} loadout'lar",
+    "otherColors": "{budget}€ altı diğer renkler",
+    "backHome": "← LoadoutLab ana sayfa",
+    "readyTitle": "Hazır loadout'lar"
+  },
   "colors": {
     "red": "Kırmızı",
     "blue": "Mavi",

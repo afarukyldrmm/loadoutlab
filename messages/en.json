@@ -90,6 +90,17 @@
     "stats": "{count} weapon versions · cheapest <orange>{min}€</orange> · all <gray>{total}€</gray>",
     "hint": "All weapons of this pattern — independent of budget and color filters."
   },
+  "seo": {
+    "title": "{color} CS2 Loadout under {budget}€",
+    "metaDescription": "Ready-made {color} CS2 skin loadout under {budget}€ — AK-47, M4A4, AWP, Desert Eagle, knife & gloves with live Skinport prices, updated twice a week.",
+    "intro": "A ready-made {color} CS2 skin loadout for under {budget}€. Prices are pulled live from Skinport and refreshed twice a week — every item below links straight to the listing.",
+    "total": "Total",
+    "openBuilder": "Customize in the builder →",
+    "otherBudgets": "{color} loadouts at other budgets",
+    "otherColors": "Other colors under {budget}€",
+    "backHome": "← LoadoutLab home",
+    "readyTitle": "Ready-made loadouts"
+  },
   "colors": {
     "red": "Red",
     "blue": "Blue",

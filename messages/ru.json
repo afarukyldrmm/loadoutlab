@@ -90,6 +90,17 @@
     "stats": "{count} версий оружия · от <orange>{min}€</orange> · всё <gray>{total}€</gray>",
     "hint": "Всё оружие с этим паттерном — независимо от бюджета и фильтров цвета."
   },
+  "seo": {
+    "title": "{color} лаудаут CS2 до {budget}€",
+    "metaDescription": "Готовый {color} лаудаут скинов CS2 до {budget}€ — AK-47, M4A4, AWP, Desert Eagle, нож и перчатки. Актуальные цены Skinport, обновление дважды в неделю.",
+    "intro": "Готовый {color} лаудаут скинов CS2 до {budget}€. Цены берутся из Skinport и обновляются дважды в неделю — каждый предмет ниже ведёт прямо на объявление.",
+    "total": "Итого",
+    "openBuilder": "Настроить в конструкторе →",
+    "otherBudgets": "{color} лаудауты с другим бюджетом",
+    "otherColors": "Другие цвета до {budget}€",
+    "backHome": "← На главную LoadoutLab",
+    "readyTitle": "Готовые лаудауты"
+  },
   "colors": {
     "red": "Красный",
     "blue": "Синий",

@@ -3,6 +3,7 @@ import path from 'path';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Skin } from '@/lib/loadout';
 import { Link, routing } from '@/i18n/routing';
+import { SEO_COLORS, SEO_BUDGETS } from '@/lib/seo_pages';
 import LoadoutBuilder from '@/components/LoadoutBuilder';
 
 async function getSkins(): Promise<Skin[]> {
@@ -93,6 +94,26 @@ export default async function HomePage({
       </header>
 
       <LoadoutBuilder allSkins={skins} />
+
+      {/* v17: SEO sayfalarına iç linkler */}
+      <section className="max-w-7xl mx-auto px-4 mt-16">
+        <h2 className="text-sm font-semibold text-gray-300 mb-3">
+          {t('seo.readyTitle')}
+        </h2>
+        <div className="flex gap-2 flex-wrap">
+          {SEO_BUDGETS.map((b) =>
+            SEO_COLORS.map((c) => (
+              <Link
+                key={`${c}-${b}`}
+                href={`/loadout/${c}-under-${b}`}
+                className="px-2.5 py-1 rounded text-[11px] bg-[var(--bg-tertiary,#1f2937)] text-gray-400 hover:text-orange-400 transition-colors"
+              >
+                {t('seo.title', { color: t(`colors.${c}`), budget: b })}
+              </Link>
+            ))
+          )}
+        </div>
+      </section>
 
       <footer className="border-t border-gray-800 mt-16 py-8 px-4 text-center text-xs text-gray-500">
         <p>{t('footer.line1')}</p>
