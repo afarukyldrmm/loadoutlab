@@ -101,6 +101,12 @@ export default async function HomePage({
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              href="/cheap-alternatives"
+              className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors hidden sm:block"
+            >
+              {t('dupes.navLabel')}
+            </Link>
             <div className="text-xs text-gray-500 text-right hidden sm:block">
               <div>{t('header.skinCount', { count: skins.length })}</div>
               {pricesUpdatedAt && (

@@ -24,6 +24,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'daily',
       priority: 1,
     });
+    entries.push({
+      url: `${BASE}${prefix}/cheap-alternatives`,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    });
     for (const slug of allSeoSlugs()) {
       entries.push({
         url: `${BASE}${prefix}/loadout/${slug}`,

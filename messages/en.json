@@ -105,6 +105,14 @@
     "backHome": "← LoadoutLab home",
     "readyTitle": "Ready-made loadouts"
   },
+  "dupes": {
+    "metaTitle": "Cheap CS2 Skin Alternatives — Lookalikes for a Fraction of the Price | LoadoutLab",
+    "metaDescription": "Want the look of an expensive CS2 skin without the price tag? Visually similar budget alternatives to Vulcan, Case Hardened, Asiimov and more — with live prices.",
+    "title": "Cheap Lookalikes",
+    "intro": "The look of an expensive skin, at a fraction of the price. We match every skin by dominant colors and pattern family — these are the closest budget doubles to the most popular high-end skins.",
+    "alternativesFor": "Budget alternatives",
+    "navLabel": "Cheap Lookalikes"
+  },
   "skinPage": {
     "metaTitle": "{name} — Prices & Cheap Alternatives | LoadoutLab",
     "metaDescription": "{name} live Skinport prices from {min}€ to {max}€ across all wears, plus visually similar skins that cost a fraction of the price.",

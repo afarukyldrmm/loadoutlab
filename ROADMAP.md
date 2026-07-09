@@ -12,6 +12,17 @@
 - v12: "Sadece tam eşleşme" renk anahtarı
 - v13: Otomatik fiyat pipeline'ı — Skinport API + GitHub Actions (Pzt+Prş 06:00 UTC), header'da son güncelleme tarihi
 - v14: Çoklu dil — EN varsayılan (prefix'siz), /ru, /tr; next-intl; header'da dil seçici
+- v15: Paylaşım linki (URL state) + bütçe aşımı düzeltmesi (bıçak/eldiven maliyeti silah bütçesinden düşülür)
+- v16: Karttan wear değiştirme (FN/MW/FT fiyat çipleri)
+- v17: Ucuz Benzeri motoru (findLookalikes — renk+pattern benzerlik skoru) + SEO kombinasyon sayfaları (144)
+- v18: Keskin renk kademesi (tam→2.renk→komşu), COLOR_NEIGHBORS sıkılaştırıldı; Inter font, logo, emoji temizliği, kompakt hazır-loadout listesi
+- v19: Skin detay sayfaları — /skin/[slug], 1911 skin × 3 dil (wear tablosu, ucuz benzerleri, aile linkleri)
+- v20: /cheap-alternatives keşif sayfası + header nav
+
+## Strateji notu (v17+)
+Pazar kalabalık (10+ bütçe/renk builder'ı). Farklılaşma: (1) Ucuz Benzeri motoru = imza özellik,
+(2) fiyat geçmişi/trend (git geçmişi veri biriktiriyor — henüz UI yok), (3) TR+RU yerelleştirme,
+(4) paylaşılabilir OG görsel kartı (yapılmadı).
 
 ## Sıradaki işler (önem sırasıyla)
 

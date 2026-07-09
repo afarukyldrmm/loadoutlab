@@ -105,6 +105,14 @@
     "backHome": "← LoadoutLab ana sayfa",
     "readyTitle": "Hazır loadout'lar"
   },
+  "dupes": {
+    "metaTitle": "Ucuz CS2 Skin Alternatifleri — Pahalı Skinlerin Ucuz Benzerleri | LoadoutLab",
+    "metaDescription": "Pahalı CS2 skininin görünümünü çok daha ucuza ister misin? Vulcan, Case Hardened, Asiimov ve daha fazlasının görsel benzerleri — canlı fiyatlarla.",
+    "title": "Ucuz Benzerleri",
+    "intro": "Pahalı skinin görünümü, fiyatının çok altında. Her skini baskın renklerine ve desen ailesine göre eşleştiriyoruz — en popüler pahalı skinlerin en yakın bütçe ikizleri burada.",
+    "alternativesFor": "Bütçe alternatifleri",
+    "navLabel": "Ucuz Benzeri"
+  },
   "skinPage": {
     "metaTitle": "{name} — Fiyatlar & Ucuz Benzerleri | LoadoutLab",
     "metaDescription": "{name} canlı Skinport fiyatları: tüm kalitelerde {min}€ – {max}€ arası. Ayrıca çok daha ucuza görsel benzerleri.",
