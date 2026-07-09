@@ -983,6 +983,72 @@ export default function LoadoutBuilder({ allSkins }: Props) {
 }
 
 // ============================================================
+// WEAR SEÇİCİ (v16) — karttan kalite değiştirme
+// ============================================================
+
+/**
+ * Skinin satışta olan wear seçeneklerini fiyatlarıyla çip olarak gösterir.
+ * Tıklanınca skinin entry_price / entry_wear / entry_url alanları o wear'e
+ * göre güncellenmiş bir kopyası onPick'e verilir — mevcut override/pick
+ * mekanizmaları sayesinde toplam fiyat ve satın alma linki otomatik güncellenir.
+ */
+function WearPicker({
+  skin,
+  onPick,
+}: {
+  skin: Skin;
+  onPick: (s: Skin) => void;
+}) {
+  const order = new Map<string, number>(WEAR_ORDER.map((w, i) => [w, i]));
+  const avail = skin.wears
+    .filter((w) => w.min_price > 0)
+    .sort((a, b) => (order.get(a.wear) ?? 9) - (order.get(b.wear) ?? 9));
+
+  // Tek seçenek varsa çip göstermeye gerek yok
+  if (avail.length <= 1) {
+    return (
+      <div className="text-[10px] text-gray-500 mb-3">{skin.entry_wear}</div>
+    );
+  }
+
+  return (
+    <div className="flex gap-1 flex-wrap mb-3">
+      {avail.map((w) => {
+        const active = w.wear === skin.entry_wear;
+        return (
+          <button
+            key={w.wear}
+            title={w.wear}
+            onClick={() =>
+              !active &&
+              onPick({
+                ...skin,
+                entry_price: w.min_price,
+                entry_wear: w.wear,
+                entry_url: w.url,
+              })
+            }
+            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors border ${
+              active
+                ? 'bg-orange-500/20 text-orange-300 border-orange-500/50'
+                : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white border-transparent'
+            }`}
+          >
+            {WEAR_SHORT[w.wear]}{' '}
+            <span className="opacity-70">
+              {w.min_price >= 100
+                ? w.min_price.toFixed(0)
+                : w.min_price.toFixed(2)}
+              €
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================
 // SİLAH KARTI
 // ============================================================
 
@@ -1160,7 +1226,7 @@ function GunCard({
         <div className="text-sm font-semibold leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
           {skin.name}
         </div>
-        <div className="text-[10px] text-gray-500 mb-3">{skin.entry_wear}</div>
+        <WearPicker skin={skin} onPick={onSwap} />
       </div>
 
       <div className="flex items-baseline justify-between border-t border-gray-800 pt-3 mb-2">
@@ -1314,12 +1380,10 @@ function SlotGallery({
               <div className={`text-[11px] font-medium ${rarityColor}`}>
                 {selected.rarity}
               </div>
-              <div className="text-sm font-semibold leading-tight">
+              <div className="text-sm font-semibold leading-tight mb-1">
                 {selected.name}
               </div>
-              <div className="text-[10px] text-gray-500 mb-1">
-                {selected.entry_wear}
-              </div>
+              <WearPicker skin={selected} onPick={onPick} />
               <div className="flex items-baseline justify-between">
                 <span className="text-lg font-bold text-orange-500">
                   {selected.entry_price.toFixed(2)}€
