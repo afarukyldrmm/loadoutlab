@@ -1,0 +1,113 @@
+{
+  "meta": {
+    "title": "LoadoutLab — CS2 Skin Loadout Builder",
+    "description": "Personalized CS2 skin loadout recommendations based on your budget, colors and style. Live Skinport prices."
+  },
+  "header": {
+    "tagline": "Personalized CS2 skin recommendations",
+    "skinCount": "{count} skins · Skinport prices",
+    "updated": "Prices updated: {date}"
+  },
+  "footer": {
+    "line1": "Prototype · ByMykel CS:GO API + Skinport public data",
+    "line2": "This site is not affiliated with Valve Corp. All trademarks and prices belong to their respective owners."
+  },
+  "prefs": {
+    "title": "Set Your Preferences",
+    "budget": "Total Budget",
+    "weapons": "Weapons",
+    "weaponsSelected": "{count} weapons selected",
+    "searchPlaceholder": "Search weapons...",
+    "addPlaceholder": "Add weapon...",
+    "suggested": "Suggested:",
+    "knifeIncluded": "Knife included",
+    "knifeAdd": "Add knife",
+    "gloveIncluded": "Gloves included",
+    "gloveAdd": "Add gloves",
+    "showAllWeapons": "↓ Pick weapons in detail",
+    "hideAllWeapons": "↑ Hide full weapon list",
+    "selectAll": "All",
+    "selectNone": "None",
+    "wearLabel": "Quality / Wear (optional)",
+    "wearHint": "Skins not sold in the selected quality are excluded; prices reflect your selection. Leave empty to use the cheapest quality.",
+    "clear": "Clear",
+    "colorLabel": "Color (optional)",
+    "selectedCount": "{count} selected",
+    "colorTooltip": "Colors match the skin's dominant color. If no exact match exists, a near tone is suggested.",
+    "exactOnly": "Exact matches only",
+    "exactOnlyHint": "— no near tones; a slot stays empty if nothing fits",
+    "collectionsToggle": "Collections (Printstream, Doppler...)",
+    "collectionsLabel": "Collections (optional)",
+    "collectionsPlaceholder": "Search collections — Printstream, Doppler, Fade...",
+    "collectionsHint": "Selecting a collection shows every weapon version of that pattern (independent of budget and filters).",
+    "collectionsEmpty": "No matching collection.",
+    "collectionTitle": "{count} weapons · cheapest {price}€",
+    "regenerate": "↻ Regenerate"
+  },
+  "total": {
+    "label": "Estimated Total",
+    "ofBudget": "/ {budget}€ budget",
+    "remaining": "Remaining"
+  },
+  "warnings": {
+    "unmatched": "🎨 No matching skin in your color for {count} weapons",
+    "unmatchedHint": "Even near tones couldn't be found for these weapons. Increase the budget, add another color or remove them.",
+    "nothingSelected": "Select at least one weapon, knife or gloves."
+  },
+  "card": {
+    "manual": "HAND-PICKED",
+    "nearTone": "NEAR TONE",
+    "nearToneTitle": "No exact match in this color — a near-tone skin was selected",
+    "remove": "Remove {weapon}",
+    "noColorTitle": "No {weapon} in this color",
+    "noColorHint": "Your selected color didn't match this weapon.",
+    "clearColorFilter": "Remove color filter",
+    "removeFromLoadout": "Remove from loadout",
+    "budgetShort": "Budget too low",
+    "cheapest": "Cheapest {weapon}",
+    "fitBudget": "Fit to budget",
+    "cheaper": "Cheaper: {name}",
+    "buy": "Buy →",
+    "hideAlts": "↑ Hide alternatives",
+    "showAlts": "↔ Other options",
+    "noAlts": "No alternatives found"
+  },
+  "gallery": {
+    "knife": "Knife",
+    "glove": "Gloves",
+    "options": "{count} options",
+    "remove": "Remove",
+    "emptyColor": "No {title} found in your color. Change the color filter.",
+    "empty": "No {title} found.",
+    "all": "All",
+    "showing": "Showing {shown} / {total} — pick a model to narrow down."
+  },
+  "family": {
+    "back": "← Back to loadout",
+    "label": "Collection",
+    "stats": "{count} weapon versions · cheapest <orange>{min}€</orange> · all <gray>{total}€</gray>",
+    "hint": "All weapons of this pattern — independent of budget and color filters."
+  },
+  "colors": {
+    "red": "Red",
+    "blue": "Blue",
+    "green": "Green",
+    "gold": "Gold",
+    "purple": "Purple",
+    "pink": "Pink",
+    "orange": "Orange",
+    "yellow": "Yellow",
+    "brown": "Brown",
+    "gray": "Gray",
+    "black": "Black",
+    "white": "White"
+  },
+  "categories": {
+    "rifle": "Rifles",
+    "pistol": "Pistols",
+    "smg": "SMGs",
+    "heavy": "Heavy",
+    "knife": "Knives",
+    "glove": "Gloves"
+  }
+}

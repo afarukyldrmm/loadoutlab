@@ -10,6 +10,8 @@
 - v12: UI sadeleştirme — panel sırası: Bütçe → Silahlar → Wear → Renk → Koleksiyonlar (katlanır)
 - v12: Wear/float filtresi (FN/MW/FT/WW/BS) — fiyat ve linkler seçili kaliteye göre
 - v12: "Sadece tam eşleşme" renk anahtarı
+- v13: Otomatik fiyat pipeline'ı — Skinport API + GitHub Actions (Pzt+Prş 06:00 UTC), header'da son güncelleme tarihi
+- v14: Çoklu dil — EN varsayılan (prefix'siz), /ru, /tr; next-intl; header'da dil seçici
 
 ## Sıradaki işler (önem sırasıyla)
 

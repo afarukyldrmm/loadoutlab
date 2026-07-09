@@ -1,0 +1,113 @@
+{
+  "meta": {
+    "title": "LoadoutLab — CS2 Skin Loadout Oluşturucu",
+    "description": "Bütçene, renklerine ve tarzına göre kişiselleştirilmiş CS2 skin loadout önerileri. Canlı Skinport fiyatları."
+  },
+  "header": {
+    "tagline": "CS2 için kişiselleştirilmiş skin önerileri",
+    "skinCount": "{count} skin · Skinport fiyatları",
+    "updated": "Son güncelleme: {date}"
+  },
+  "footer": {
+    "line1": "Prototip · ByMykel CS:GO API + Skinport public data",
+    "line2": "Bu site Valve Corp. ile bağlı değildir. Tüm marka ve fiyatlar ilgili sahiplerine aittir."
+  },
+  "prefs": {
+    "title": "Tercihlerini Ayarla",
+    "budget": "Toplam Bütçe",
+    "weapons": "Silahlar",
+    "weaponsSelected": "{count} silah seçili",
+    "searchPlaceholder": "Silah ara...",
+    "addPlaceholder": "Silah ekle...",
+    "suggested": "Önerilen:",
+    "knifeIncluded": "Bıçak dahil",
+    "knifeAdd": "Bıçak ekle",
+    "gloveIncluded": "Eldiven dahil",
+    "gloveAdd": "Eldiven ekle",
+    "showAllWeapons": "↓ Tüm silahları detaylı seç",
+    "hideAllWeapons": "↑ Tüm silah listesini gizle",
+    "selectAll": "Hepsi",
+    "selectNone": "Hiçbiri",
+    "wearLabel": "Kalite / Wear (opsiyonel)",
+    "wearHint": "Seçili kalitede satışı olmayan skinler önerilmez; fiyatlar seçili kaliteye göre gösterilir. Boş bırakırsan en ucuz kalite baz alınır.",
+    "clear": "Temizle",
+    "colorLabel": "Renk (opsiyonel)",
+    "selectedCount": "{count} seçili",
+    "colorTooltip": "Renk, skinin baskın rengine göre eşleşir. Tam eşleşme yoksa yakın ton önerilir.",
+    "exactOnly": "Sadece tam eşleşme",
+    "exactOnlyHint": "— yakın ton önerilmez, uygun skin yoksa slot boş kalır",
+    "collectionsToggle": "Koleksiyonlar (Printstream, Doppler...)",
+    "collectionsLabel": "Koleksiyonlar (opsiyonel)",
+    "collectionsPlaceholder": "Koleksiyon ara — Printstream, Doppler, Fade...",
+    "collectionsHint": "Bir koleksiyon seçince o desenin tüm silah versiyonları (bütçe ve filtre bağımsız) gösterilir.",
+    "collectionsEmpty": "Eşleşen koleksiyon yok.",
+    "collectionTitle": "{count} silah · en ucuz {price}€",
+    "regenerate": "↻ Yeniden öner"
+  },
+  "total": {
+    "label": "Toplam Tahmini",
+    "ofBudget": "/ {budget}€ bütçe",
+    "remaining": "Kalan"
+  },
+  "warnings": {
+    "unmatched": "🎨 {count} silah için seçtiğin renkte uygun skin yok",
+    "unmatchedHint": "Bu silahlar için yakın tonda bile skin bulunamadı. Bütçeyi artır, başka renk ekle veya o silahları çıkar.",
+    "nothingSelected": "En az bir silah, bıçak veya eldiven seç."
+  },
+  "card": {
+    "manual": "ELLE SEÇİLDİ",
+    "nearTone": "YAKIN TON",
+    "nearToneTitle": "Bu renkte tam eşleşme yok — yakın tonlu bir skin seçildi",
+    "remove": "{weapon} kaldır",
+    "noColorTitle": "Bu renkte uygun {weapon} yok",
+    "noColorHint": "Seçtiğin renk bu silah için eşleşmedi.",
+    "clearColorFilter": "Renk filtresini kaldır",
+    "removeFromLoadout": "Loadout'tan çıkar",
+    "budgetShort": "Bütçe yetmiyor",
+    "cheapest": "En ucuz {weapon}",
+    "fitBudget": "Bütçeye sığdır",
+    "cheaper": "Daha ucuz: {name}",
+    "buy": "Satın al →",
+    "hideAlts": "↑ Alternatifleri gizle",
+    "showAlts": "↔ Diğer seçenekler",
+    "noAlts": "Alternatif bulunamadı"
+  },
+  "gallery": {
+    "knife": "Bıçak",
+    "glove": "Eldiven",
+    "options": "{count} seçenek",
+    "remove": "Çıkar",
+    "emptyColor": "Seçtiğin renkte {title} bulunamadı. Renk filtresini değiştir.",
+    "empty": "{title} bulunamadı.",
+    "all": "Tümü",
+    "showing": "{shown} / {total} gösteriliyor — daraltmak için model seç."
+  },
+  "family": {
+    "back": "← Loadout'a dön",
+    "label": "Koleksiyon",
+    "stats": "{count} silah versiyonu · en ucuz <orange>{min}€</orange> · tümü <gray>{total}€</gray>",
+    "hint": "Bu desenin tüm silahları — bütçe ve renk filtrelerinden bağımsız."
+  },
+  "colors": {
+    "red": "Kırmızı",
+    "blue": "Mavi",
+    "green": "Yeşil",
+    "gold": "Altın",
+    "purple": "Mor",
+    "pink": "Pembe",
+    "orange": "Turuncu",
+    "yellow": "Sarı",
+    "brown": "Kahverengi",
+    "gray": "Gri",
+    "black": "Siyah",
+    "white": "Beyaz"
+  },
+  "categories": {
+    "rifle": "Tüfekler",
+    "pistol": "Tabancalar",
+    "smg": "SMG",
+    "heavy": "Heavy",
+    "knife": "Bıçaklar",
+    "glove": "Eldivenler"
+  }
+}

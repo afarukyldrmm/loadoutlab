@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Skin,
   THEME_TAGS,
@@ -72,6 +73,7 @@ const COLOR_SWATCH: Record<string, string> = {
 };
 
 export default function LoadoutBuilder({ allSkins }: Props) {
+  const t = useTranslations();
   const [budget, setBudget] = useState(500);
   const [themeColors, setThemeColors] = useState<string[]>([]);
   const [enabledGuns, setEnabledGuns] = useState<Set<string>>(
@@ -333,12 +335,12 @@ export default function LoadoutBuilder({ allSkins }: Props) {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* ====== TERCİHLER ====== */}
       <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Tercihlerini Ayarla</h2>
+        <h2 className="text-lg font-semibold mb-4">{t('prefs.title')}</h2>
 
         {/* Bütçe */}
         <div className="mb-6">
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm text-gray-400">Toplam Bütçe</label>
+            <label className="text-sm text-gray-400">{t('prefs.budget')}</label>
             <span className="text-2xl font-bold text-orange-500">
               {budget.toLocaleString('tr-TR')}€
             </span>
@@ -372,9 +374,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         {/* SİLAHLAR */}
         <div className="mb-6">
           <div className="flex items-baseline justify-between mb-2">
-            <label className="text-sm text-gray-400">Silahlar</label>
+            <label className="text-sm text-gray-400">{t('prefs.weapons')}</label>
             <span className="text-xs text-gray-600">
-              {enabledGuns.size} silah seçili
+              {t('prefs.weaponsSelected', { count: enabledGuns.size })}
             </span>
           </div>
 
@@ -406,7 +408,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                         removeGun(weaponName);
                       }}
                       className="opacity-70 hover:opacity-100 ml-0.5"
-                      aria-label={`${weaponName} kaldır`}
+                      aria-label={t('card.remove', { weapon: weaponName })}
                     >
                       ×
                     </button>
@@ -419,7 +421,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 placeholder={
-                  activeGunList.length === 0 ? 'Silah ara...' : 'Silah ekle...'
+                  activeGunList.length === 0
+                    ? t('prefs.searchPlaceholder')
+                    : t('prefs.addPlaceholder')
                 }
                 className="bg-transparent border-none text-gray-200 text-sm flex-1 min-w-[120px] outline-none px-1 py-1"
               />
@@ -440,7 +444,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                       )}
                     </span>
                     <span className="text-xs text-gray-500 capitalize">
-                      {WEAPON_CATEGORIES.find((c) => c.id === w.category)?.label}
+                      {t(`categories.${w.category}`)}
                     </span>
                   </button>
                 ))}
@@ -450,7 +454,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
 
           {smartSuggestions.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mt-2">
-              <span className="text-xs text-gray-500">Önerilen:</span>
+              <span className="text-xs text-gray-500">
+                {t('prefs.suggested')}
+              </span>
               {smartSuggestions.map((w) => (
                 <button
                   key={w}
@@ -474,7 +480,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
               }`}
             >
               <span>🔪</span>
-              <span>Bıçak {includeKnife ? 'dahil' : 'ekle'}</span>
+              <span>
+                {includeKnife ? t('prefs.knifeIncluded') : t('prefs.knifeAdd')}
+              </span>
             </button>
             <button
               onClick={() => setIncludeGlove((v) => !v)}
@@ -485,7 +493,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
               }`}
             >
               <span>🧤</span>
-              <span>Eldiven {includeGlove ? 'dahil' : 'ekle'}</span>
+              <span>
+                {includeGlove ? t('prefs.gloveIncluded') : t('prefs.gloveAdd')}
+              </span>
             </button>
           </div>
 
@@ -494,8 +504,8 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             className="text-xs text-gray-500 hover:text-orange-400 transition-colors mt-3"
           >
             {showAllWeapons
-              ? '↑ Tüm silah listesini gizle'
-              : '↓ Tüm silahları detaylı seç'}
+              ? t('prefs.hideAllWeapons')
+              : t('prefs.showAllWeapons')}
           </button>
 
           {showAllWeapons && (
@@ -511,7 +521,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                   <div key={cat.id}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider">
-                        {cat.label}{' '}
+                        {t(`categories.${cat.id}`)}{' '}
                         <span className="text-gray-600">
                           ({selectedInCat}/{catWeapons.length})
                         </span>
@@ -528,7 +538,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                           }}
                           className="text-[10px] text-gray-500 hover:text-orange-400"
                         >
-                          Hepsi
+                          {t('prefs.selectAll')}
                         </button>
                         <span className="text-[10px] text-gray-700">·</span>
                         <button
@@ -542,7 +552,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                           }}
                           className="text-[10px] text-gray-500 hover:text-orange-400"
                         >
-                          Hiçbiri
+                          {t('prefs.selectNone')}
                         </button>
                       </div>
                     </div>
@@ -586,7 +596,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-gray-400">
-              Kalite / Wear (opsiyonel){' '}
+              {t('prefs.wearLabel')}{' '}
               {wearFilter.length > 0 && (
                 <span className="text-orange-400 ml-1">
                   {wearFilter.map((w) => WEAR_SHORT[w]).join(', ')}
@@ -601,7 +611,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 }}
                 className="text-xs text-gray-500 hover:text-orange-400 transition-colors"
               >
-                Temizle
+                {t('prefs.clear')}
               </button>
             )}
           </div>
@@ -628,8 +638,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             })}
           </div>
           <p className="text-[11px] text-gray-600 mt-2">
-            Seçili kalitede satışı olmayan skinler önerilmez; fiyatlar seçili
-            kaliteye göre gösterilir. Boş bırakırsan en ucuz kalite baz alınır.
+            {t('prefs.wearHint')}
           </p>
         </div>
 
@@ -637,10 +646,10 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm text-gray-400">
-              Renk (opsiyonel){' '}
+              {t('prefs.colorLabel')}{' '}
               {hasColorFilter && (
                 <span className="text-orange-400 ml-1">
-                  {themeColors.length} seçili
+                  {t('prefs.selectedCount', { count: themeColors.length })}
                 </span>
               )}
             </label>
@@ -649,18 +658,18 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 onClick={clearColors}
                 className="text-xs text-gray-500 hover:text-orange-400 transition-colors"
               >
-                Temizle
+                {t('prefs.clear')}
               </button>
             )}
           </div>
           <div className="flex gap-2 flex-wrap">
-            {COLOR_CHIPS.map((t) => {
-              const selected = themeColors.includes(t.id);
+            {COLOR_CHIPS.map((c) => {
+              const selected = themeColors.includes(c.id);
               return (
                 <button
-                  key={t.id}
-                  onClick={() => toggleColor(t.id)}
-                  title="Renk, skinin baskın rengine göre eşleşir. Tam eşleşme yoksa yakın ton önerilir."
+                  key={c.id}
+                  onClick={() => toggleColor(c.id)}
+                  title={t('prefs.colorTooltip')}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     selected
                       ? 'bg-orange-500 text-white'
@@ -669,9 +678,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 >
                   <span
                     className="w-3 h-3 rounded-full border border-black/30 flex-shrink-0"
-                    style={{ background: COLOR_SWATCH[t.id] ?? '#888' }}
+                    style={{ background: COLOR_SWATCH[c.id] ?? '#888' }}
                   />
-                  {t.label}
+                  {t(`colors.${c.id}`)}
                 </button>
               );
             })}
@@ -690,9 +699,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                 className="w-3.5 h-3.5 accent-orange-500"
               />
               <span className="text-xs text-gray-400">
-                Sadece tam eşleşme
+                {t('prefs.exactOnly')}
                 <span className="text-gray-600 ml-1.5">
-                  — yakın ton önerilmez, uygun skin yoksa slot boş kalır
+                  {t('prefs.exactOnlyHint')}
                 </span>
               </span>
             </label>
@@ -705,7 +714,9 @@ export default function LoadoutBuilder({ allSkins }: Props) {
           className="text-xs text-gray-500 hover:text-orange-400 transition-colors flex items-center gap-1.5"
         >
           <span>⚙️</span>
-          <span>Koleksiyonlar (Printstream, Doppler...) {showAdvanced ? '▲' : '▼'}</span>
+          <span>
+            {t('prefs.collectionsToggle')} {showAdvanced ? '▲' : '▼'}
+          </span>
         </button>
 
         {showAdvanced && (
@@ -713,13 +724,13 @@ export default function LoadoutBuilder({ allSkins }: Props) {
         {/* KOLEKSİYONLAR — aile (desen) seçimi */}
         <div>
           <label className="text-sm text-gray-400 mb-2 block">
-            Koleksiyonlar (opsiyonel)
+            {t('prefs.collectionsLabel')}
           </label>
           <input
             type="text"
             value={familyQuery}
             onChange={(e) => setFamilyQuery(e.target.value)}
-            placeholder="Koleksiyon ara — Printstream, Doppler, Fade..."
+            placeholder={t('prefs.collectionsPlaceholder')}
             className="w-full bg-[var(--bg-tertiary)] border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-orange-500/50 mb-2"
           />
           <div className="flex gap-2 flex-wrap max-h-36 overflow-y-auto p-0.5">
@@ -727,9 +738,10 @@ export default function LoadoutBuilder({ allSkins }: Props) {
               <button
                 key={f.family}
                 onClick={() => setSelectedFamily(f.family)}
-                title={`${f.weaponCount} silah · en ucuz ${f.minPrice.toFixed(
-                  0
-                )}€`}
+                title={t('prefs.collectionTitle', {
+                  count: f.weaponCount,
+                  price: f.minPrice.toFixed(0),
+                })}
                 className="px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--bg-tertiary)] text-gray-300 hover:bg-amber-600 hover:text-white transition-colors flex items-center gap-1.5"
               >
                 {f.family}
@@ -740,13 +752,12 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             ))}
             {filteredFamilies.length === 0 && (
               <span className="text-xs text-gray-600 py-2">
-                Eşleşen koleksiyon yok.
+                {t('prefs.collectionsEmpty')}
               </span>
             )}
           </div>
           <p className="text-[11px] text-gray-600 mt-1.5">
-            Bir koleksiyon seçince o desenin tüm silah versiyonları (bütçe ve
-            filtre bağımsız) gösterilir.
+            {t('prefs.collectionsHint')}
           </p>
         </div>
         </div>
@@ -757,7 +768,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             onClick={regenerate}
             className="px-4 py-1.5 bg-[var(--bg-tertiary)] hover:bg-gray-700 text-white text-sm font-medium rounded-md transition-colors"
           >
-            ↻ Yeniden öner
+            {t('prefs.regenerate')}
           </button>
         </div>
       </div>
@@ -766,18 +777,18 @@ export default function LoadoutBuilder({ allSkins }: Props) {
       <div className="bg-gradient-to-r from-orange-500/10 to-orange-600/5 border border-orange-500/30 rounded-xl p-5 mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="text-xs text-gray-400 uppercase tracking-wider">
-            Toplam Tahmini
+            {t('total.label')}
           </div>
           <div className="text-3xl font-bold mt-1">
             {totalPrice.toFixed(2)}€
             <span className="text-sm text-gray-500 font-normal ml-2">
-              / {budget}€ bütçe
+              {t('total.ofBudget', { budget })}
             </span>
           </div>
         </div>
         <div className="text-right">
           <div className="text-xs text-gray-400 uppercase tracking-wider">
-            Kalan
+            {t('total.remaining')}
           </div>
           <div
             className={`text-2xl font-bold mt-1 ${
@@ -794,18 +805,17 @@ export default function LoadoutBuilder({ allSkins }: Props) {
       {unmatchedSet.size > 0 && (
         <div className="bg-amber-900/20 border border-amber-600/50 rounded-xl p-4 mb-6">
           <div className="text-amber-300 font-semibold text-sm">
-            🎨 {unmatchedSet.size} silah için seçtiğin renkte uygun skin yok
+            {t('warnings.unmatched', { count: unmatchedSet.size })}
           </div>
           <div className="text-xs text-amber-200/80 mt-1">
-            Bu silahlar için yakın tonda bile skin bulunamadı. Bütçeyi artır,
-            başka renk ekle veya o silahları çıkar.
+            {t('warnings.unmatchedHint')}
           </div>
         </div>
       )}
 
       {nothingSelected ? (
         <div className="bg-[var(--bg-secondary)] border border-gray-800 rounded-xl p-8 text-center text-gray-400">
-          En az bir silah, bıçak veya eldiven seç.
+          {t('warnings.nothingSelected')}
         </div>
       ) : (
         <>
@@ -845,7 +855,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
             <div className="mt-6 space-y-4">
               {includeKnife && (
                 <SlotGallery
-                  title="Bıçak"
+                  title={t('gallery.knife')}
                   icon="🔪"
                   options={knifeOptions}
                   selected={effectiveKnife}
@@ -856,7 +866,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
               )}
               {includeGlove && (
                 <SlotGallery
-                  title="Eldiven"
+                  title={t('gallery.glove')}
                   icon="🧤"
                   options={gloveOptions}
                   selected={effectiveGlove}
@@ -910,6 +920,7 @@ function GunCard({
   onRemove,
   onClearColors,
 }: GunCardProps) {
+  const t = useTranslations('card');
   const [showAlts, setShowAlts] = useState(false);
 
   const alternatives = useMemo(() => {
@@ -932,24 +943,22 @@ function GunCard({
         <div className="flex-1 flex flex-col items-center justify-center text-center py-4 px-2">
           <div className="text-3xl mb-2">🎨</div>
           <div className="text-sm font-semibold text-amber-300 mb-1">
-            Bu renkte uygun {weaponName} yok
+            {t('noColorTitle', { weapon: weaponName })}
           </div>
-          <div className="text-xs text-gray-400">
-            Seçtiğin renk bu silah için eşleşmedi.
-          </div>
+          <div className="text-xs text-gray-400">{t('noColorHint')}</div>
         </div>
         <div className="flex flex-col gap-1.5 mt-3">
           <button
             onClick={onClearColors}
             className="w-full bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium py-2 rounded-md transition-colors"
           >
-            Renk filtresini kaldır
+            {t('clearColorFilter')}
           </button>
           <button
             onClick={onRemove}
             className="w-full bg-transparent hover:text-red-400 text-gray-500 text-[11px] py-1 transition-colors"
           >
-            Loadout&apos;tan çıkar
+            {t('removeFromLoadout')}
           </button>
         </div>
       </div>
@@ -968,10 +977,10 @@ function GunCard({
         <div className="flex-1 flex flex-col items-center justify-center text-center py-4 px-2">
           <div className="text-3xl mb-2">⚠️</div>
           <div className="text-sm font-semibold text-gray-200 mb-1">
-            Bütçe yetmiyor
+            {t('budgetShort')}
           </div>
           <div className="text-xs text-gray-400">
-            En ucuz {weaponName}{' '}
+            {t('cheapest', { weapon: weaponName })}{' '}
             <span className="text-orange-500 font-semibold">
               {minPrice.toFixed(0)}€
             </span>
@@ -982,21 +991,21 @@ function GunCard({
             onClick={onIncreaseBudget}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium py-2 rounded-md transition-colors"
           >
-            Bütçeye sığdır
+            {t('fitBudget')}
           </button>
           {cheaperAlt && (
             <button
               onClick={onReplaceCheaper}
               className="w-full bg-transparent hover:bg-[var(--bg-tertiary)] text-gray-300 hover:text-white text-xs py-2 rounded-md border border-gray-700 hover:border-gray-600 transition-colors"
             >
-              Daha ucuz: {cheaperAlt}
+              {t('cheaper', { name: cheaperAlt })}
             </button>
           )}
           <button
             onClick={onRemove}
             className="w-full bg-transparent hover:text-red-400 text-gray-500 text-[11px] py-1 transition-colors"
           >
-            Loadout&apos;tan çıkar
+            {t('removeFromLoadout')}
           </button>
         </div>
       </div>
@@ -1014,21 +1023,21 @@ function GunCard({
         <div className="flex items-center gap-1.5">
           {isOverridden && (
             <div className="text-[9px] text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded font-medium">
-              ELLE SEÇİLDİ
+              {t('manual')}
             </div>
           )}
           {isRelaxedMatch && !isOverridden && (
             <div
               className="text-[9px] text-sky-300 bg-sky-500/10 px-1.5 py-0.5 rounded font-medium"
-              title="Bu renkte tam eşleşme yok — yakın tonlu bir skin seçildi"
+              title={t('nearToneTitle')}
             >
-              YAKIN TON
+              {t('nearTone')}
             </div>
           )}
           <button
             onClick={onRemove}
             className="text-gray-600 hover:text-red-400 text-sm leading-none"
-            aria-label={`${weaponName} kaldır`}
+            aria-label={t('remove', { weapon: weaponName })}
           >
             ×
           </button>
@@ -1068,7 +1077,7 @@ function GunCard({
           rel="noopener noreferrer"
           className="text-xs text-gray-400 hover:text-orange-400 transition-colors"
         >
-          Satın al →
+          {t('buy')}
         </a>
       </div>
 
@@ -1076,7 +1085,7 @@ function GunCard({
         onClick={() => setShowAlts((v) => !v)}
         className="text-xs text-gray-500 hover:text-orange-400 transition-colors w-full text-center mt-1 py-1"
       >
-        {showAlts ? '↑ Alternatifleri gizle' : '↔ Diğer seçenekler'}
+        {showAlts ? t('hideAlts') : t('showAlts')}
       </button>
 
       {showAlts && alternatives.length > 0 && (
@@ -1115,7 +1124,7 @@ function GunCard({
 
       {showAlts && alternatives.length === 0 && (
         <div className="text-xs text-gray-600 mt-2 text-center py-3">
-          Alternatif bulunamadı
+          {t('noAlts')}
         </div>
       )}
     </div>
@@ -1145,6 +1154,7 @@ function SlotGallery({
   onPick,
   onRemove,
 }: SlotGalleryProps) {
+  const t = useTranslations();
   const [modelFilter, setModelFilter] = useState<string | null>(null);
 
   // Mevcut seçeneklerdeki modeller (skin sayısına göre sıralı)
@@ -1172,22 +1182,22 @@ function SlotGallery({
           <span>{icon}</span>
           <span>{title}</span>
           <span className="text-xs text-gray-600 font-normal">
-            {options.length} seçenek
+            {t('gallery.options', { count: options.length })}
           </span>
         </div>
         <button
           onClick={onRemove}
           className="text-gray-600 hover:text-red-400 text-xs"
         >
-          Çıkar
+          {t('gallery.remove')}
         </button>
       </div>
 
       {options.length === 0 ? (
         <div className="text-center text-sm text-gray-400 py-8">
           {hasColorFilter
-            ? `Seçtiğin renkte ${title.toLowerCase()} bulunamadı. Renk filtresini değiştir.`
-            : `${title} bulunamadı.`}
+            ? t('gallery.emptyColor', { title })
+            : t('gallery.empty', { title })}
         </div>
       ) : (
         <div className="flex flex-col md:flex-row gap-4">
@@ -1221,7 +1231,7 @@ function SlotGallery({
                   rel="noopener noreferrer"
                   className="text-xs text-gray-400 hover:text-orange-400 transition-colors"
                 >
-                  Satın al →
+                  {t('card.buy')}
                 </a>
               </div>
             </div>
@@ -1239,7 +1249,7 @@ function SlotGallery({
                     : 'bg-[var(--bg-tertiary)] text-gray-400 hover:text-white'
                 }`}
               >
-                Tümü
+                {t('gallery.all')}
               </button>
               {models.map(([model, count]) => (
                 <button
@@ -1298,8 +1308,10 @@ function SlotGallery({
             </div>
             {options.length > shown.length && (
               <div className="text-[11px] text-gray-600 mt-1.5">
-                {shown.length} / {options.length} gösteriliyor — daraltmak için
-                model seç.
+                {t('gallery.showing', {
+                  shown: shown.length,
+                  total: options.length,
+                })}
               </div>
             )}
           </div>
@@ -1320,6 +1332,7 @@ interface FamilyShowcaseProps {
 }
 
 function FamilyShowcase({ family, skins, onBack }: FamilyShowcaseProps) {
+  const t = useTranslations();
   const minPrice = skins.length
     ? Math.min(...skins.map((s) => s.entry_price))
     : 0;
@@ -1331,26 +1344,29 @@ function FamilyShowcase({ family, skins, onBack }: FamilyShowcaseProps) {
         onClick={onBack}
         className="text-sm text-gray-400 hover:text-orange-400 transition-colors mb-4"
       >
-        ← Loadout&apos;a dön
+        {t('family.back')}
       </button>
 
       <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/30 rounded-xl p-5 mb-6">
         <div className="text-xs text-amber-400/80 uppercase tracking-wider">
-          Koleksiyon
+          {t('family.label')}
         </div>
         <div className="text-3xl font-bold mt-1">{family}</div>
         <div className="text-sm text-gray-400 mt-1">
-          {skins.length} silah versiyonu · en ucuz{' '}
-          <span className="text-orange-500 font-semibold">
-            {minPrice.toFixed(2)}€
-          </span>{' '}
-          · tümü{' '}
-          <span className="text-gray-300 font-semibold">
-            {totalAll.toFixed(0)}€
-          </span>
+          {t.rich('family.stats', {
+            count: skins.length,
+            min: minPrice.toFixed(2),
+            total: totalAll.toFixed(0),
+            orange: (chunks) => (
+              <span className="text-orange-500 font-semibold">{chunks}</span>
+            ),
+            gray: (chunks) => (
+              <span className="text-gray-300 font-semibold">{chunks}</span>
+            ),
+          })}
         </div>
         <div className="text-[11px] text-gray-600 mt-2">
-          Bu desenin tüm silahları — bütçe ve renk filtrelerinden bağımsız.
+          {t('family.hint')}
         </div>
       </div>
 
@@ -1398,7 +1414,7 @@ function FamilyShowcase({ family, skins, onBack }: FamilyShowcaseProps) {
                   rel="noopener noreferrer"
                   className="text-xs text-gray-400 hover:text-orange-400 transition-colors"
                 >
-                  Satın al →
+                  {t('card.buy')}
                 </a>
               </div>
             </div>
