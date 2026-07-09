@@ -988,6 +988,7 @@ export function themeMatchingSkins(
   allSkins: Skin[],
   slot: Slot,
   colors: string[],
+  mode: ColorMatchMode = 'auto',
 ): Skin[] {
   const inSlot = allSkins.filter((s) => s.slot === slot);
   const byPrice = (a: Skin, b: Skin) => a.entry_price - b.entry_price;
@@ -997,7 +998,8 @@ export function themeMatchingSkins(
   const strictMatches = inSlot
     .filter((s) => matchesThemeFilter(s, colors, [], true))
     .sort(byPrice);
-  if (strictMatches.length > 0) return strictMatches;
+  // mode=true → sadece tam eşleşme; yakın ton fallback yok
+  if (strictMatches.length > 0 || mode === true) return strictMatches;
 
   return inSlot
     .filter((s) => matchesThemeFilter(s, colors, [], false))

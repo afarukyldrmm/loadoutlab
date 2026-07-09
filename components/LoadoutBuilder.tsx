@@ -88,6 +88,8 @@ export default function LoadoutBuilder({ allSkins }: Props) {
   // v12 UI: gelişmiş ayarlar katlaması + wear (kalite) filtresi
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [wearFilter, setWearFilter] = useState<string[]>([]);
+  // v12: true → sadece tam renk eşleşmesi (yakın ton önerilmez, slot boş kalabilir)
+  const [exactColorsOnly, setExactColorsOnly] = useState(false);
 
   // Wear filtresi uygulanmış skin havuzu — tüm öneri/galeri/alternatifler bunu kullanır
   const skinPool = useMemo(
@@ -115,13 +117,13 @@ export default function LoadoutBuilder({ allSkins }: Props) {
       budget,
       themeColors,
       themeStyles: [],
-      strictColor: 'auto',
+      strictColor: exactColorsOnly ? true : 'auto',
       respectThemeStrictly: true,
       enabledWeapons: Array.from(enabledGuns),
       variationSeed: regenKey,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget, themeColors, enabledGuns, regenKey, skinPool]);
+  }, [budget, themeColors, enabledGuns, regenKey, skinPool, exactColorsOnly]);
 
   const unmatchedSet = useMemo(
     () => new Set(loadout.unmatchedWeapons ?? []),
@@ -143,12 +145,24 @@ export default function LoadoutBuilder({ allSkins }: Props) {
 
   // --- Bıçak & eldiven galerileri (tüm modeller, renk filtreli) ---
   const knifeOptions = useMemo(
-    () => themeMatchingSkins(skinPool, 'knife', themeColors),
-    [skinPool, themeColors]
+    () =>
+      themeMatchingSkins(
+        skinPool,
+        'knife',
+        themeColors,
+        exactColorsOnly ? true : 'auto'
+      ),
+    [skinPool, themeColors, exactColorsOnly]
   );
   const gloveOptions = useMemo(
-    () => themeMatchingSkins(skinPool, 'glove', themeColors),
-    [skinPool, themeColors]
+    () =>
+      themeMatchingSkins(
+        skinPool,
+        'glove',
+        themeColors,
+        exactColorsOnly ? true : 'auto'
+      ),
+    [skinPool, themeColors, exactColorsOnly]
   );
   const effectiveKnife = useMemo(() => {
     if (knifePick && knifeOptions.some((s) => s.id === knifePick.id))
@@ -662,6 +676,27 @@ export default function LoadoutBuilder({ allSkins }: Props) {
               );
             })}
           </div>
+          {hasColorFilter && (
+            <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={exactColorsOnly}
+                onChange={() => {
+                  setExactColorsOnly((v) => !v);
+                  setGunOverrides({});
+                  setKnifePick(null);
+                  setGlovePick(null);
+                }}
+                className="w-3.5 h-3.5 accent-orange-500"
+              />
+              <span className="text-xs text-gray-400">
+                Sadece tam eşleşme
+                <span className="text-gray-600 ml-1.5">
+                  — yakın ton önerilmez, uygun skin yoksa slot boş kalır
+                </span>
+              </span>
+            </label>
+          )}
         </div>
 
         {/* GELİŞMİŞ AYARLAR — katlanır bölüm (v12) */}
@@ -788,6 +823,7 @@ export default function LoadoutBuilder({ allSkins }: Props) {
                     skin={skin}
                     allSkins={skinPool}
                     themeColors={themeColors}
+                    exactColorsOnly={exactColorsOnly}
                     isThemeUnmatched={isThemeUnmatched}
                     isRelaxedMatch={
                       relaxedSet.has(weaponName) && !gunOverrides[weaponName]
@@ -846,6 +882,8 @@ interface GunCardProps {
   skin?: Skin;
   allSkins: Skin[];
   themeColors: string[];
+  /** v12: true → alternatiflerde de sadece tam renk eşleşmesi */
+  exactColorsOnly: boolean;
   isThemeUnmatched: boolean;
   /** v11: tam renk bulunamadı, yakın tonla dolduruldu */
   isRelaxedMatch: boolean;
@@ -862,6 +900,7 @@ function GunCard({
   skin,
   allSkins,
   themeColors,
+  exactColorsOnly,
   isThemeUnmatched,
   isRelaxedMatch,
   isOverridden,
@@ -878,10 +917,10 @@ function GunCard({
     return findAlternatives(allSkins, skin, {
       themeColors,
       themeStyles: [],
-      strictColor: 'auto',
+      strictColor: exactColorsOnly ? true : 'auto',
       maxResults: 8,
     });
-  }, [allSkins, skin, themeColors, showAlts]);
+  }, [allSkins, skin, themeColors, exactColorsOnly, showAlts]);
 
   // Renk yüzünden boş slot
   if (!skin && isThemeUnmatched) {
